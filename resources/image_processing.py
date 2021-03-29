@@ -435,6 +435,6 @@ if __name__ == "__main__":
     # convert_tilesheet_to_2bpp('brainstorming/ExampleTilesheets/PokemonTilesheet.png', 'brainstorming/ExampleTilesheets/PokemonTilesheet.bin')
     # convert_pokemon_to_binary('SourceImages/Pokemon/EnemyPokemon/ConvertToTilesheet', 'SourceImages/Pokemon/EnemyPokemon/Converted/EnemyPokemonTilesheet.bin')
     # convert_pokemon_to_binary('SourceImages/Pokemon/PlayerPokemon/ConvertToTilesheet', 'SourceImages/Pokemon/PlayerPokemon/Converted/PlayerPokemonTilesheet.bin')
-    convert_tilesheet_to_2bpp("SourceImages/Mario/MarioTilesheet.png", "SourceImages/Mario/MarioTilesheet.bin")
+    convert_tilesheet_to_2bpp("resources/SourceImages/Mario/MarioTilesheet.png", "resources/SourceImages/Mario/MarioTilesheet.bin")
     # convert_tilesheet_to_2bpp("SourceImages/Mario/MarioSpritesheet.png", "SourceImages/Mario/MarioSpritesheet.bin")
     

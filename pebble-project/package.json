@@ -1,0 +1,52 @@
+{
+  "name": "gbc_graphics_demo",
+  "author": "Harrison Allen",
+  "version": "1.0.0",
+  "keywords": ["pebble-app"],
+  "private": true,
+  "dependencies": {},
+  "pebble": {
+    "displayName": "GBC Graphics Demo",
+    "uuid": "1a271249-4a96-4a47-bc20-fc1477fa3aae",
+    "sdkVersion": "3",
+    "enableMultiJS": true,
+    "targetPlatforms": [
+      "basalt"
+    ],
+    "watchapp": {
+      "watchface": false
+    },
+    "messageKeys": [
+      "dummy"
+    ],
+    "resources": {
+      "media": [
+        {
+          "type": "raw",
+          "name": "DATA_MARIO_TILESHEET",
+          "file": "data/MarioTilesheet.bin"
+        },
+        {
+          "type": "raw",
+          "name": "DATA_MARIO_SPRITESHEET",
+          "file": "data/MarioSpritesheet.bin"
+        },
+        {
+          "type": "raw",
+          "name": "DATA_MARIO_WORLD_MAP",
+          "file": "data/MarioWorldMap.bin"
+        },
+        {
+          "type": "raw",
+          "name": "DATA_MARIO_WORLD_COLLISION_MAP",
+          "file": "data/MarioWorldCollisionMap.bin"
+        },
+        {
+          "type": "raw",
+          "name": "DATA_POKEMON_TILESHEET",
+          "file": "data/PokemonTilesheet.bin"
+        }        
+      ]
+    }
+  }
+}

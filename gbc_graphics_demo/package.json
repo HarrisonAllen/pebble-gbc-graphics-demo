@@ -6,9 +6,7 @@
     "pebble-app"
   ],
   "private": true,
-  "dependencies": {
-    "pebble-gbc-graphics": "file:../../pebble-gbc-graphics"
-  },
+  "dependencies": {},
   "pebble": {
     "displayName": "GBC Graphics Demo",
     "uuid": "1a271249-4a96-4a47-bc20-fc1477fa3aae",

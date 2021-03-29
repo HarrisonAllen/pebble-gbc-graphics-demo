@@ -115,23 +115,57 @@ static void up_release_handler(ClickRecognizerRef recognizer, void *context) {
   }
 }
 
-static void up_click_handler(ClickRecognizerRef recognizer, void *context) {
-  return;
-  unload_demo(s_demo_mode);
-  s_demo_mode++;
-  if (s_demo_mode == DM_END) {
-    s_demo_mode = DM_START+1;
+static void down_press_handler(ClickRecognizerRef recognizer, void *context) {
+  switch(s_demo_mode) {
+    case DM_MARIO:
+      Mario_handle_down(s_graphics, true);
+      break;
+    default:
+      break;
   }
-  load_demo(s_demo_mode);
+}
+
+static void down_release_handler(ClickRecognizerRef recognizer, void *context) {
+  switch(s_demo_mode) {
+    case DM_MARIO:
+      Mario_handle_down(s_graphics, false);
+      break;
+    default:
+      break;
+  }
+}
+
+static void up_click_handler(ClickRecognizerRef recognizer, void *context) {
+  switch(s_demo_mode) {
+    case DM_MARIO:
+      Mario_handle_up_click(s_graphics);
+      break;
+    case DM_POKEMON:
+      break;
+    default:
+      break;
+  }
 }
 
 static void down_click_handler(ClickRecognizerRef recognizer, void *context) {
   switch(s_demo_mode) {
     case DM_MARIO:
-      Mario_handle_down(s_graphics);
+      Mario_handle_down_click(s_graphics);
       break;
     case DM_POKEMON:
       Pokemon_handle_down(s_graphics);
+      break;
+    default:
+      break;
+  }
+}
+
+static void back_click_handler(ClickRecognizerRef recognizer, void *context) {
+  switch(s_demo_mode) {
+    case DM_MARIO:
+      Mario_handle_back(s_graphics);
+      break;
+    case DM_POKEMON:
       break;
     default:
       break;
@@ -155,12 +189,16 @@ static void click_config_provider(void *context) {
   window_single_click_subscribe(BUTTON_ID_SELECT, select_click_handler);
   window_single_click_subscribe(BUTTON_ID_UP, up_click_handler);
   window_single_click_subscribe(BUTTON_ID_DOWN, down_click_handler);
+  window_single_click_subscribe(BUTTON_ID_BACK, back_click_handler);
 
   // window_single_repeating_click_subscribe(BUTTON_ID_UP, 100, up_click_handler);
-  window_single_repeating_click_subscribe(BUTTON_ID_SELECT, 30, select_click_handler);
   window_raw_click_subscribe(BUTTON_ID_SELECT, select_press_handler, select_release_handler, NULL);
   window_raw_click_subscribe(BUTTON_ID_UP, up_press_handler, up_release_handler, NULL);
+  window_raw_click_subscribe(BUTTON_ID_DOWN, down_press_handler, down_release_handler, NULL);
+
+  window_single_repeating_click_subscribe(BUTTON_ID_SELECT, 30, select_click_handler);
   window_single_repeating_click_subscribe(BUTTON_ID_DOWN, 30, down_click_handler);
+  window_single_repeating_click_subscribe(BUTTON_ID_UP, 30, up_click_handler);
 }
 
 static void nudge_bg() {
@@ -207,8 +245,6 @@ static void frame_timer_handle(void* context) {
     default:
       break;
   }
-
-  GBC_Graphics_render(s_graphics);
 
   s_frame_timer = app_timer_register(FRAME_DURATION, frame_timer_handle, NULL);
 }

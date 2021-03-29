@@ -1,0 +1,7 @@
+{
+    "files.associations": {
+        "mario.h": "c",
+        "pebble.h": "c",
+        "pokemon.h": "c"
+    }
+}

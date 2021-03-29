@@ -1,5 +1,5 @@
 #include "main_window.h"
-#include "gbc_graphics.h"
+#include <pebble-gbc-graphics/pebble-gbc-graphics.h>
 #include "mario/mario.h"
 #include "pokemon/pokemon.h"
 

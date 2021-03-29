@@ -1,7 +1,7 @@
 #pragma once
 
 #include <pebble.h>
-#include "../gbc_graphics.h"
+#include <pebble-gbc-graphics/pebble-gbc-graphics.h>
 
 const uint8_t attr_dirt[] = {
     0 | ATTR_VRAM_BANK_01_FLAG, 0 | ATTR_VRAM_BANK_01_FLAG,

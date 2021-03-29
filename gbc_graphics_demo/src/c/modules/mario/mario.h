@@ -1,7 +1,7 @@
 #pragma once
 
 #include <pebble.h>
-#include "../gbc_graphics.h"
+#include <pebble-gbc-graphics/pebble-gbc-graphics.h>
 
 #define TEXT_START 58
 #define NUMBER_START 84

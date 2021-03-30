@@ -20,6 +20,7 @@
 #define MD_DOWN 0b0100
 #define MD_RIGHT 0b1000
 #define NUM_MENU_ITEMS 6
+#define MARIO_SAVE_KEY 0
 
 typedef enum {
     MG_PLAY,
@@ -39,6 +40,12 @@ typedef struct {
     // Then store them with the Storage API https://developer.rebble.io/developer.pebble.com/guides/events-and-services/persistent-storage/index.html
     // Want to look into:
     //  - Checking if save data exists (what does api return if no data at key?)
+
+    uint16_t player_score;
+    uint8_t player_coins;
+    uint16_t time_remaining;
+    uint16_t player_world_x;
+    uint8_t player_y;
 } MarioSaveData;
 
 void Mario_initialize(GBC_Graphics *graphics);

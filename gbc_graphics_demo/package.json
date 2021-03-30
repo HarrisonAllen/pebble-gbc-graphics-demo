@@ -13,7 +13,8 @@
     "sdkVersion": "3",
     "enableMultiJS": true,
     "targetPlatforms": [
-      "basalt"
+      "basalt",
+      "diorite"
     ],
     "watchapp": {
       "watchface": false

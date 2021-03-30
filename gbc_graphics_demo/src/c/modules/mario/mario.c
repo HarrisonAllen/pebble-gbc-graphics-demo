@@ -7,13 +7,23 @@ static uint16_t s_column_to_load;
 static uint32_t s_frame;
 static uint8_t s_cur_pal;
 static MarioGameState s_mario_game_state;
-static uint8_t s_mystery_block_palettes[][4] = {
-    {0b11011011, 0b11111001, 0b11100100, 0b11000000},
-    {0b11011011, 0b11100100, 0b11100100, 0b11000000},
-    {0b11011011, 0b11100000, 0b11100100, 0b11000000},
-    {0b11011011, 0b11100100, 0b11100100, 0b11000000},
-    {0b11011011, 0b11111001, 0b11100100, 0b11000000}
-};
+#if defined(PBL_COLOR)
+    static uint8_t s_mystery_block_palettes[][4] = {
+        {0b11011011, 0b11111001, 0b11100100, 0b11000000},
+        {0b11011011, 0b11100100, 0b11100100, 0b11000000},
+        {0b11011011, 0b11100000, 0b11100100, 0b11000000},
+        {0b11011011, 0b11100100, 0b11100100, 0b11000000},
+        {0b11011011, 0b11111001, 0b11100100, 0b11000000}
+    };
+#else
+    static uint8_t s_mystery_block_palettes[][4] = {
+        {0, 0, 1, 1},
+        {0, 0, 1, 1},
+        {0, 0, 1, 1},
+        {0, 0, 1, 1},
+        {0, 0, 1, 1}
+    };
+#endif
 static uint8_t s_old_bg_scroll_x, s_old_bg_scroll_y;
 static char s_text_buffer[20] = {0};
 static uint16_t s_player_score;
@@ -31,30 +41,7 @@ static bool s_top_bar_show_time;
 static MarioJumpState s_player_jump_state;
 static uint8_t s_max_x_speed;
 static uint8_t s_cursor_pos;
-static bool s_saved;
-
-/* Todo: menu
- *  - Resume
- *  - Restart
- *  - Pokemon
- *  - Save
- *  - Load
- *  - Quit
- */
-
-/* Todo: add Mario
- *  - Down toggles moving mode
- *      - Accelerate up to walking speed
- *      - Accelerate down to stopped
- *  - Select jumps
- *      - While held down, will go up! Until max height, that is.
- *  - Up (short press) changes direction
- *  - Up (long press) menu
- */
-
-/* Todo: add bar at the top
- * Basically the first row of tiles is the stats, then hblank, then draw the screen
- */
+static bool s_saved, s_load_failed, s_restart = true;
 
 static void handle_line_compare(GBC_Graphics *graphics) {
     if (GBC_Graphics_stat_get_line_y_compare(graphics) == 0) {
@@ -166,7 +153,7 @@ static void update_top_bar(GBC_Graphics *graphics) {
     }
 }
 
-static void draw_pause_menu(GBC_Graphics *graphics, uint8_t cursor_pos, bool saved) {
+static void draw_pause_menu(GBC_Graphics *graphics, uint8_t cursor_pos, bool saved, bool load_failed) {
     clear_window(graphics);
     uint8_t start_x = 5;
     uint8_t start_y = 5;
@@ -176,6 +163,9 @@ static void draw_pause_menu(GBC_Graphics *graphics, uint8_t cursor_pos, bool sav
         write_string_to_window(graphics, start_x + 5, start_y + 2, 6, "v", 0);
     }
     write_string_to_window(graphics, start_x, start_y + 4, 6, "LOAD", 0);
+    if (load_failed) {
+        write_string_to_window(graphics, start_x + 5, start_y + 4, 6, "x", 0);
+    }
     write_string_to_window(graphics, start_x, start_y + 6, 6, "RESTART", 0);
     write_string_to_window(graphics, start_x, start_y + 8, 6, "NEXT DEMO", 0);
     write_string_to_window(graphics, start_x, start_y + 10, 6, "QUIT", 0);
@@ -185,17 +175,19 @@ static void draw_pause_menu(GBC_Graphics *graphics, uint8_t cursor_pos, bool sav
 void Mario_initialize(GBC_Graphics *graphics) {
     s_frame = 0;
     s_cur_pal = 0;
-    s_player_score = 0;
-    s_player_coins = 0;
-    s_time = 400;
+    s_player_moving = false;
     s_player_x_speed = 0;
     s_player_y_speed = 0;
     s_player_x = 24;
-    // s_player_y = SCREEN_HEIGHT - TILE_HEIGHT * 4 + SPRITE_OFFSET_Y + 1;
-    s_player_y = 32 - 1;
-    s_player_world_x = s_player_x - 8;
     s_max_x_speed = MAX_WALK_SPEED;
     s_mario_game_state = MG_PLAY;
+    if (s_restart) {
+        s_player_score = 0;
+        s_player_coins = 0;
+        s_time = 400;
+        s_player_world_x = s_player_x - 8;
+        s_player_y = 32 - 1;
+    }
 
     ResHandle handle = resource_get_handle(RESOURCE_ID_DATA_MARIO_WORLD_MAP);
     size_t res_size = resource_size(handle);
@@ -212,24 +204,34 @@ void Mario_initialize(GBC_Graphics *graphics) {
     GBC_Graphics_bg_set_scroll_pos(graphics, 0, MAP_HEIGHT * TILE_HEIGHT - SCREEN_HEIGHT);
 
     clear_background(graphics);
-    for (s_column_to_load = 0; s_column_to_load < SCREEN_WIDTH / TILE_WIDTH + 1; s_column_to_load++) {
-        Mario_load_column_at_pos(graphics, s_column_to_load, (GBC_Graphics_bg_get_scroll_x(graphics) / TILE_WIDTH) + s_column_to_load, (GBC_Graphics_bg_get_scroll_y(graphics) / TILE_HEIGHT) - 1);
+    uint16_t start_col = s_player_world_x / 8 - 2;
+        for (s_column_to_load = start_col; s_column_to_load < start_col + SCREEN_WIDTH / TILE_WIDTH + 1; s_column_to_load++) {
+        Mario_load_column_at_pos(graphics, s_column_to_load, (GBC_Graphics_bg_get_scroll_x(graphics) / TILE_WIDTH) + (s_column_to_load - start_col), (GBC_Graphics_bg_get_scroll_y(graphics) / TILE_HEIGHT) - 1);
     }
     update_top_bar(graphics);
     
     clear_window(graphics);
     GBC_Graphics_window_set_offset_pos(graphics, 0, 168);
-    draw_pause_menu(graphics, 0, false);
+    draw_pause_menu(graphics, s_cursor_pos, s_saved, s_load_failed);
 
     GBC_Graphics_stat_set_line_compare_interrupt_enabled(graphics, true);
     GBC_Graphics_set_line_compare_interrupt_callback(graphics, handle_line_compare);
     GBC_Graphics_stat_set_line_y_compare(graphics, 0);
-
-    GBC_Graphics_set_bg_palette(graphics, 0, 0b11011011, 0b11111111, 0b11011111, 0b11000000);
-    GBC_Graphics_set_bg_palette(graphics, 1, 0b11011011, 0b11111001, 0b11100100, 0b11000000);
-    GBC_Graphics_set_bg_palette(graphics, 2, 0b11011011, 0b11101101, 0b11001000, 0b11000000);
-    GBC_Graphics_set_bg_palette(graphics, 3, 0b11011011, 0b11111010, 0b11100100, 0b11000000);
-    GBC_Graphics_set_bg_palette(graphics, 6, 0b11000000, 0b11111111, 0b11111111, 0b11000000);
+    
+        
+    #if defined(PBL_COLOR)
+        GBC_Graphics_set_bg_palette(graphics, 0, 0b11011011, 0b11111111, 0b11011111, 0b11000000);
+        GBC_Graphics_set_bg_palette(graphics, 1, 0b11011011, 0b11111001, 0b11100100, 0b11000000);
+        GBC_Graphics_set_bg_palette(graphics, 2, 0b11011011, 0b11101101, 0b11001000, 0b11000000);
+        GBC_Graphics_set_bg_palette(graphics, 3, 0b11011011, 0b11111010, 0b11100100, 0b11000000);
+        GBC_Graphics_set_bg_palette(graphics, 6, 0b11000000, 0b11111111, 0b11111111, 0b11000000);
+    #else
+        GBC_Graphics_set_bg_palette(graphics, 0, 0, 0, 1, 1);
+        GBC_Graphics_set_bg_palette(graphics, 1, 0, 0, 1, 1);
+        GBC_Graphics_set_bg_palette(graphics, 2, 0, 0, 1, 1);
+        GBC_Graphics_set_bg_palette(graphics, 3, 0, 0, 1, 1);
+        GBC_Graphics_set_bg_palette(graphics, 6, 1, 1, 0, 0);
+    #endif
 
     for (uint8_t i = 0; i < 40; i++) {
         GBC_Graphics_oam_hide_sprite(graphics, i);
@@ -237,8 +239,14 @@ void Mario_initialize(GBC_Graphics *graphics) {
     GBC_Graphics_lcdc_set_8x16_sprite_mode_enabled(graphics, true);
     GBC_Graphics_oam_set_sprite(graphics, 0, s_player_x, SCREEN_HEIGHT - s_player_y + SPRITE_OFFSET_Y, MARIO_STAND, GBC_Graphics_attr_make(4, 1, false, false, false));
     GBC_Graphics_oam_set_sprite(graphics, 1, s_player_x + TILE_WIDTH, SCREEN_HEIGHT - s_player_y + SPRITE_OFFSET_Y, MARIO_STAND + 2, GBC_Graphics_attr_make(4, 1, false, false, false));
-    GBC_Graphics_set_sprite_palette(graphics, 4, 0b11011011, 0b11111001, 0b11100100, 0b11110000);
-    GBC_Graphics_set_sprite_palette(graphics, 5, 0b11011011, 0b11111001, 0b11100100, 0b11001100);
+    
+    #if defined(PBL_COLOR)
+        GBC_Graphics_set_sprite_palette(graphics, 4, 0b11011011, 0b11111001, 0b11100100, 0b11110000);
+        GBC_Graphics_set_sprite_palette(graphics, 5, 0b11011011, 0b11111001, 0b11100100, 0b11001100);
+    #else
+        GBC_Graphics_set_sprite_palette(graphics, 4, 0, 0, 1, 1);
+        GBC_Graphics_set_sprite_palette(graphics, 5, 0, 0, 1, 1);
+    #endif
 
     GBC_Graphics_render(graphics);
 }
@@ -451,6 +459,40 @@ void Mario_load_column_at_pos(GBC_Graphics *graphics, uint16_t column, uint8_t b
     }
 }
 
+static void load(GBC_Graphics *graphics) {
+
+    MarioSaveData data;
+    if (persist_read_data(MARIO_SAVE_KEY, &data, sizeof(MarioSaveData)) != E_DOES_NOT_EXIST) {
+        s_player_coins = data.player_coins;
+        s_player_score = data.player_score;
+        s_player_world_x = data.player_world_x;
+        s_player_y = data.player_y;
+        s_time = data.time_remaining;
+        s_restart = false;
+        Mario_deinitialize(graphics);
+        Mario_initialize(graphics);
+    } else {
+        s_load_failed = true;
+        draw_pause_menu(graphics, s_cursor_pos, s_saved, s_load_failed);
+        GBC_Graphics_render(graphics);
+    }
+}
+
+static void save(GBC_Graphics *graphics) {
+    MarioSaveData data = (MarioSaveData) {
+        .player_coins = s_player_coins,
+        .player_score = s_player_score,
+        .player_world_x = s_player_world_x,
+        .player_y = s_player_y,
+        .time_remaining = s_time,
+    };
+    uint32_t key = 0;
+    persist_write_data(MARIO_SAVE_KEY, &data, sizeof(MarioSaveData));
+    s_saved = true;
+    draw_pause_menu(graphics, s_cursor_pos, s_saved, s_load_failed);
+    GBC_Graphics_render(graphics);
+}
+
 void Mario_handle_select(GBC_Graphics *graphics) {
     if (s_mario_game_state == MG_PLAY) {
         s_player_moving = !s_player_moving;
@@ -460,14 +502,13 @@ void Mario_handle_select(GBC_Graphics *graphics) {
                 s_mario_game_state = MG_PAUSE_MENU_MOVING;
                 break;
             case 1: // Save
-                s_saved = !s_saved;
-                draw_pause_menu(graphics, s_cursor_pos, s_saved);
-                GBC_Graphics_render(graphics);
+                save(graphics);
                 break;
             case 2: // Load
-
+                load(graphics);
                 break;
             case 3: // Restart
+                s_restart = true;
                 Mario_deinitialize(graphics);
                 Mario_initialize(graphics);
                 break;
@@ -490,7 +531,7 @@ void Mario_handle_up(GBC_Graphics *graphics, bool up) {
 void Mario_handle_up_click(GBC_Graphics *graphics) {
     if (s_mario_game_state == MG_PAUSE) {
         s_cursor_pos = s_cursor_pos == 0 ? NUM_MENU_ITEMS - 1 : s_cursor_pos - 1;
-        draw_pause_menu(graphics, s_cursor_pos, s_saved);
+        draw_pause_menu(graphics, s_cursor_pos, s_saved, s_load_failed);
         GBC_Graphics_render(graphics);
     }
 }
@@ -513,7 +554,7 @@ void Mario_handle_down(GBC_Graphics *graphics, bool down) {
 void Mario_handle_down_click(GBC_Graphics *graphics) {
     if (s_mario_game_state == MG_PAUSE) {
         s_cursor_pos = (s_cursor_pos + 1) % NUM_MENU_ITEMS;
-        draw_pause_menu(graphics, s_cursor_pos, s_saved);
+        draw_pause_menu(graphics, s_cursor_pos, s_saved, s_load_failed);
         GBC_Graphics_render(graphics);
     }
 }
@@ -527,6 +568,9 @@ void Mario_handle_back(GBC_Graphics *graphics) {
             s_up_pressed = false;
             s_down_pressed = false;
             s_cursor_pos = 0;
+            s_saved = false;
+            s_load_failed = false;
+            draw_pause_menu(graphics, s_cursor_pos, s_saved, s_load_failed);
             break;
         case MG_PAUSE:
             s_mario_game_state = MG_PAUSE_MENU_MOVING;

@@ -2,7 +2,6 @@
 
 /** Creating a global variable allows us to pass the GBC Graphics object to the update procs */
 static GBC_Graphics *s_graphics;
-static uint8_t s_pixel_mod;
 
 ///> Forward declarations for static functions
 static void bg_update_proc(Layer *layer, GContext *ctx);
@@ -181,14 +180,14 @@ static void render_bg_graphics(GBC_Graphics *self, Layer *layer, GContext *ctx) 
         attrmap = self->bg_attrmap;
       } else { // Otherwise set the pixel to white
         extract_pixel = false;
-        pixel_color = 0xFF;
+        
+        #if defined(PBL_COLOR)
+          pixel_color = 0xFF;
+        #else
+          pixel_color = 1;
+        #endif
       }
 
-      /* 
-         If you want a better understanding of what's going on here, please refer
-         to "get_pixel_value_at_pos_on_map()". This basically unwraps that and its
-         underlying functions to optimize performance.
-      */
       if (extract_pixel) {
         // Find the tile that the pixel is on
         map_tile_x = map_x >> 3; // map_x / TILE_WIDTH
@@ -229,8 +228,15 @@ static void render_bg_graphics(GBC_Graphics *self, Layer *layer, GContext *ctx) 
         // Finally, we get the corresponding color from attribute palette
         pixel_color = self->bg_palette_bank[((tile_attr & ATTR_PALETTE_MASK) << 2) + pixel]; // (tile_attr & ATTR_PALETTE_MASK) * 4
       }
-
-      memset(&fb_data[x + self->line_y * row_size], pixel_color, 1);
+      
+      #if defined(PBL_COLOR)
+        memset(&fb_data[x + self->line_y * row_size], pixel_color, 1);
+      #else
+        uint16_t byte = (x >> 3) + self->line_y * row_size; // x / 8
+        uint8_t bit = x & 7; // x % 8
+        uint8_t *byte_mod = &fb_data[byte];
+        *byte_mod ^= (-pixel_color ^ *byte_mod) & (1 << bit);
+      #endif
     }
     // Now we're in the HBlank state, run the callback
     self->stat |= STAT_HBLANK_FLAG;
@@ -246,7 +252,6 @@ static void render_bg_graphics(GBC_Graphics *self, Layer *layer, GContext *ctx) 
   if (self->stat & STAT_VBLANK_INT_FLAG) {
     self->vblank_interrupt_callback(self);
   }
-  s_pixel_mod++;
 }
 
 /**
@@ -389,8 +394,17 @@ static void render_sprite_graphics(GBC_Graphics *self, Layer *layer, GContext *c
           if (pixel == 0) {
             continue;
           }
+          
           pixel_color = self->sprite_palette_bank[((sprite[3] & ATTR_PALETTE_MASK) << 2) + pixel]; // (tile_attr & ATTR_PALETTE_MASK) * PALETTE_SIZE + pixel
+          
+          #if defined(PBL_COLOR)
           memset(&fb_data[screen_x + screen_y * row_size], pixel_color, 1);
+          #else
+            uint16_t byte = screen_x / 8 + screen_y * row_size; // screen x / 
+            uint8_t bit = screen_x % 8; 
+            uint8_t *byte_mod = &fb_data[byte];
+            *byte_mod ^= (-pixel_color ^ *byte_mod) & (1 << bit);
+          #endif
         }
       }
     }

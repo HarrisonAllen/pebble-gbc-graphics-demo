@@ -1,5 +1,8 @@
 import os
 from enum import Enum
+from PIL import Image
+
+TILE_SIZE = 8
 
 Mario_Blocks = {
     'SKY': 0,
@@ -75,6 +78,39 @@ def convert_csv_to_collision_map(map_file, collision_map):
                 line_num += 1
     print(f"World has {line_num} columns and 2 bytes per column")
 
+    
+def convert_tilesheet_to_2bpp(sheet_filename, out_filename):
+    input_img = Image.open(sheet_filename)
+    colors = []
+    dims = input_img.size
+    x_tiles = dims[0] // TILE_SIZE
+    y_tiles = dims[1] // TILE_SIZE
+    with open(out_filename, 'wb') as out_file:
+        for y_tile in range(y_tiles):
+            for x_tile in range(x_tiles):
+                tile_root = (x_tile * TILE_SIZE, y_tile * TILE_SIZE)
+                tile_bounds = (tile_root[0], tile_root[1],
+                            tile_root[0] + TILE_SIZE, tile_root[1] + TILE_SIZE)
+                tile = input_img.crop(tile_bounds)
+
+                out_file.write(convert_tile_to_bytes(tile))
+    print(dims[0] * dims[1], (dims[0] * dims[1]) // 4, os.path.getsize(out_filename))
+
+def convert_tile_to_bytes(tile):
+    result = []
+    colors = []
+    for y in range(tile.size[1]):
+        for x in range(tile.size[0]):
+            colors.append(tile.getpixel((x, y)))
+            if len(colors) == 4:
+                b = colors[0] << 6 | colors[1] << 4 | colors[2] << 2 | colors[3]
+                result.append(b)
+                colors = []
+    return bytes(result)
+
 if __name__ == "__main__":
-    convert_csv_to_tilemap("SourceImages/Mario/MarioWorld1-1Map.csv", "SourceImages/Mario/MarioWorldMap.bin")
-    convert_csv_to_collision_map("SourceImages/Mario/MarioWorld1-1CollisionMap.csv", "SourceImages/Mario/MarioWorldCollisionMap.bin")
+    # convert_csv_to_tilemap("SourceImages/Mario/MarioWorld1-1Map.csv", "SourceImages/Mario/MarioWorldMap.bin")
+    # convert_csv_to_collision_map("SourceImages/Mario/MarioWorld1-1CollisionMap.csv", "SourceImages/Mario/MarioWorldCollisionMap.bin")
+    convert_tilesheet_to_2bpp("resources/SourceImages/Mario/MarioTilesheet~bw.png", "resources/SourceImages/Mario/MarioTilesheet~bw.bin")
+    convert_tilesheet_to_2bpp("resources/SourceImages/Mario/MarioSpritesheet~bw.png", "resources/SourceImages/Mario/MarioSpritesheet~bw.bin")
+    

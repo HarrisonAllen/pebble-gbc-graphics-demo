@@ -154,6 +154,9 @@ static void render_bg_graphics(GBC_Graphics *self, Layer *layer, GContext *ctx) 
   uint8_t shift;
   uint8_t x;
   bool extract_pixel;
+  uint16_t byte;
+  uint8_t bit;
+  uint8_t *byte_mod;
 
   self->stat &= ~STAT_VBLANK_FLAG; // No longer in VBlank while we draw
   for (self->line_y = 0; self->line_y < bounds.size.h; self->line_y++) {
@@ -165,76 +168,64 @@ static void render_bg_graphics(GBC_Graphics *self, Layer *layer, GContext *ctx) 
 
     self->stat &= ~STAT_HBLANK_FLAG; // No longer in HBlank while we draw the line
     for(x = 0; x < bounds.size.w; x++) {
-      // Decide what pixel to draw, first check if window is enabled and we're within its bounds
-      if (self->lcdc & LCDC_WINDOW_ENABLE_FLAG && self->line_y >= window_offset_y && x >= window_offset_x) {
-        extract_pixel = true;
+      // Decide what pixel to draw, first check if we're in the window bounds
+      if (self->line_y >= window_offset_y && x >= window_offset_x) {
         map_x = x - self->window_offset_x;
         map_y = self->line_y - self->window_offset_y;
         tilemap = self->window_tilemap;
         attrmap = self->window_attrmap;
-      } else if (self->lcdc & LCDC_BCKGND_ENABLE_FLAG) { // Otherwise draw the background if enabled
-        extract_pixel = true;
+      } else { // Otherwise draw the background
         map_x = x + self->bg_scroll_x;
         map_y = self->line_y + self->bg_scroll_y;
         tilemap = self->bg_tilemap;
         attrmap = self->bg_attrmap;
-      } else { // Otherwise set the pixel to white
-        extract_pixel = false;
-        
-        #if defined(PBL_COLOR)
-          pixel_color = 0xFF;
-        #else
-          pixel_color = 1;
-        #endif
       }
 
-      if (extract_pixel) {
-        // Find the tile that the pixel is on
-        map_tile_x = map_x >> 3; // map_x / TILE_WIDTH
-        map_tile_y = map_y >> 3; // map_y / TILE_HEIGHT
+      // Find the tile that the pixel is on
+      map_tile_x = map_x >> 3; // map_x / TILE_WIDTH
+      map_tile_y = map_y >> 3; // map_y / TILE_HEIGHT
 
-        // Get the tile and attrs from the map
-        tile_num = tilemap[map_tile_x + (map_tile_y << 5)]; // map_tile_y * MAP_WIDTH
-        tile_attr = attrmap[map_tile_x + (map_tile_y << 5)];
-        
-        // Get the tile from vram
-        offset = tile_num << 4; // tile_num * TILE_SIZE
-        tile = self->vram + (((uint16_t)((tile_attr & ATTR_VRAM_BANK_MASK) >> 3)) << 12) + offset; // self->vram + vram_bank_number * VRAM_BANK_SIZE + offset
+      // Get the tile and attrs from the map
+      tile_num = tilemap[map_tile_x + (map_tile_y << 5)]; // map_tile_y * MAP_WIDTH
+      tile_attr = attrmap[map_tile_x + (map_tile_y << 5)];
+      
+      // Get the tile from vram
+      offset = tile_num << 4; // tile_num * TILE_SIZE
+      tile = self->vram + (((uint16_t)((tile_attr & ATTR_VRAM_BANK_MASK) >> 3)) << 12) + offset; // self->vram + vram_bank_number * VRAM_BANK_SIZE + offset
 
-        // Next, we extract and return the 2bpp pixel from the tile
-        pixel_x = map_x & 7; // map_x % TILE_WIDTH
-        pixel_y = map_y & 7; // map_x % TILE_HEIGHT
+      // Next, we extract and return the 2bpp pixel from the tile
+      pixel_x = map_x & 7; // map_x % TILE_WIDTH
+      pixel_y = map_y & 7; // map_x % TILE_HEIGHT
 
-        // Apply flip flags if necessary
-        if (tile_attr & ATTR_FLIP_FLAG_X) {
-          pixel_x = TILE_WIDTH - pixel_x - 1; // Take the x position from the right when flipped
-        }
-        if (tile_attr & ATTR_FLIP_FLAG_Y) {
-          pixel_y = TILE_HEIGHT - pixel_y - 1; // Take the y position from the bottom when flipped
-        }
-
-        // To get the pixel, we first need to get the corresponding byte the pixel is in
-        // There are 2 bytes per row (y * 2), and 4 pixels per byte (x / 4)
-        offset = (pixel_y << 1) + (pixel_x >> 2); // pixel y * 2 + pixel_x / 4
-        pixel_byte = tile[offset];
-
-        // Once we have the byte, we need to get the 2 bit pixel out of the byte
-        // This is achieved by shifting the byte (3 - x % 4) * (2 bits per pixel)
-        shift = (3 - (pixel_x & 3)) << 1; // (3 - pixel_x % 4) * 2
-
-        // We shift the byte and get rid of any unwanted bits
-        pixel = 0b11 & (pixel_byte >> shift);
-
-        // Finally, we get the corresponding color from attribute palette
-        pixel_color = self->bg_palette_bank[((tile_attr & ATTR_PALETTE_MASK) << 2) + pixel]; // (tile_attr & ATTR_PALETTE_MASK) * 4
+      // Apply flip flags if necessary
+      if (tile_attr & ATTR_FLIP_FLAG_X) {
+        pixel_x = TILE_WIDTH - pixel_x - 1; // Take the x position from the right when flipped
       }
+      if (tile_attr & ATTR_FLIP_FLAG_Y) {
+        pixel_y = TILE_HEIGHT - pixel_y - 1; // Take the y position from the bottom when flipped
+      }
+
+      // To get the pixel, we first need to get the corresponding byte the pixel is in
+      // There are 2 bytes per row (y * 2), and 4 pixels per byte (x / 4)
+      offset = (pixel_y << 1) + (pixel_x >> 2); // pixel y * 2 + pixel_x / 4
+      pixel_byte = tile[offset];
+
+      // Once we have the byte, we need to get the 2 bit pixel out of the byte
+      // This is achieved by shifting the byte (3 - x % 4) * (2 bits per pixel)
+      shift = (3 - (pixel_x & 3)) << 1; // (3 - pixel_x % 4) * 2
+
+      // We shift the byte and get rid of any unwanted bits
+      pixel = 0b11 & (pixel_byte >> shift);
+
+      // Finally, we get the corresponding color from attribute palette
+      pixel_color = self->bg_palette_bank[((tile_attr & ATTR_PALETTE_MASK) << 2) + pixel]; // (tile_attr & ATTR_PALETTE_MASK) * 4
       
       #if defined(PBL_COLOR)
         memset(&fb_data[x + self->line_y * row_size], pixel_color, 1);
       #else
-        uint16_t byte = (x >> 3) + self->line_y * row_size; // x / 8
-        uint8_t bit = x & 7; // x % 8
-        uint8_t *byte_mod = &fb_data[byte];
+        byte = (x >> 3) + self->line_y * row_size; // x / 8
+        bit = x & 7; // x % 8
+        byte_mod = &fb_data[byte];
         *byte_mod ^= (-pixel_color ^ *byte_mod) & (1 << bit);
       #endif
     }
@@ -280,8 +271,12 @@ static void render_sprite_graphics(GBC_Graphics *self, Layer *layer, GContext *c
   uint16_t offset;
   uint8_t pixel_x, pixel_y, pixel, pixel_byte, pixel_color;
   uint8_t shift;
+  uint16_t byte;
+  uint8_t bit;
+  uint8_t *byte_mod;
 
   self->stat &= ~STAT_OAM_FLAG; // Drawing sprites, clear OAM flag
+    sprite_mode = (bool)(LCDC_SPRITE_SIZE_FLAG & self->lcdc);
   for (short sprite_id = 39; sprite_id >= 0; sprite_id--) { // Draw in reverse order so that sprite 0 is on top
     /*
       This entire for loop was previously implemented in draw_sprite_to_buffer(),
@@ -293,7 +288,6 @@ static void render_sprite_graphics(GBC_Graphics *self, Layer *layer, GContext *c
       continue;
     }
 
-    sprite_mode = (bool)(LCDC_SPRITE_SIZE_FLAG & self->lcdc);
     flipped = ATTR_FLIP_FLAG_Y & sprite[3];
     // We want to draw two tiles if the LCDC Sprite Size flag is set for 8x16 sprites, hence the for loop
     for (tile_num = 0; tile_num <= sprite_mode; tile_num++) {
@@ -324,12 +318,12 @@ static void render_sprite_graphics(GBC_Graphics *self, Layer *layer, GContext *c
 
           // Check if the background pixel has priority
           bg_tile_attr = self->bg_attrmap[map_tile_x + (map_tile_y << 5)];
-          if (self->lcdc & LCDC_BCKGND_ENABLE_FLAG && bg_tile_attr & ATTR_PRIORITY_FLAG) {
+          if (bg_tile_attr & ATTR_PRIORITY_FLAG) {
             continue;
           }
 
           // Now check if the sprite priority bit is set, and if this pixel should be transparent b/c of that
-          if (sprite[3] & ATTR_PRIORITY_FLAG && self->lcdc & LCDC_BCKGND_ENABLE_FLAG) {
+          if (sprite[3] & ATTR_PRIORITY_FLAG) {
             bg_tile_num = self->bg_tilemap[map_tile_x + (map_tile_y << 5)]; // map_tile_y * MAP_WIDTH
             
             // Get the tile from vram
@@ -400,9 +394,9 @@ static void render_sprite_graphics(GBC_Graphics *self, Layer *layer, GContext *c
           #if defined(PBL_COLOR)
           memset(&fb_data[screen_x + screen_y * row_size], pixel_color, 1);
           #else
-            uint16_t byte = screen_x / 8 + screen_y * row_size; // screen x / 
-            uint8_t bit = screen_x % 8; 
-            uint8_t *byte_mod = &fb_data[byte];
+            byte = screen_x / 8 + screen_y * row_size; // screen x / 
+            bit = screen_x % 8; 
+            byte_mod = &fb_data[byte];
             *byte_mod ^= (-pixel_color ^ *byte_mod) & (1 << bit);
           #endif
         }

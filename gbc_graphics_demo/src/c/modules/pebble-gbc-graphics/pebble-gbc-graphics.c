@@ -157,12 +157,14 @@ static void render_bg_graphics(GBC_Graphics *self, Layer *layer, GContext *ctx) 
   uint16_t byte;
   uint8_t bit;
   uint8_t *byte_mod;
+  bool flip;
 
   self->stat &= ~STAT_VBLANK_FLAG; // No longer in VBlank while we draw
   for (self->line_y = 0; self->line_y < bounds.size.h; self->line_y++) {
     // Check if the current line matches the line compare value, and then do the callback
-    modify_byte(&self->stat, STAT_LINE_COMP_FLAG, self->line_y == self->line_y_compare, STAT_LINE_COMP_FLAG);
-    if (self->stat & STAT_LINE_COMP_INT_FLAG && self->stat & STAT_LINE_COMP_FLAG) {
+    self->stat &= ~STAT_LINE_COMP_FLAG;
+    self->stat |= STAT_LINE_COMP_FLAG * (self->line_y == self->line_y_compare);
+    if ((self->stat & (STAT_LINE_COMP_INT_FLAG | STAT_LINE_COMP_FLAG)) == (STAT_LINE_COMP_INT_FLAG | STAT_LINE_COMP_FLAG)) {
       self->line_compare_interrupt_callback(self);
     }
 
@@ -198,12 +200,10 @@ static void render_bg_graphics(GBC_Graphics *self, Layer *layer, GContext *ctx) 
       pixel_y = map_y & 7; // map_x % TILE_HEIGHT
 
       // Apply flip flags if necessary
-      if (tile_attr & ATTR_FLIP_FLAG_X) {
-        pixel_x = TILE_WIDTH - pixel_x - 1; // Take the x position from the right when flipped
-      }
-      if (tile_attr & ATTR_FLIP_FLAG_Y) {
-        pixel_y = TILE_HEIGHT - pixel_y - 1; // Take the y position from the bottom when flipped
-      }
+      flip = tile_attr & ATTR_FLIP_FLAG_X;
+      pixel_x = ((pixel_x >> (flip >> 3)) - ((pixel_x + 1) >> ((ATTR_FLIP_FLAG_X ^ flip) >> 3))) & 7; // flip ? 7 - pixel_x : pixel_x
+      flip = tile_attr & ATTR_FLIP_FLAG_Y;
+      pixel_y = ((pixel_y >> (flip >> 3)) - ((pixel_y + 1) >> ((ATTR_FLIP_FLAG_Y ^ flip) >> 3))) & 7;
 
       // To get the pixel, we first need to get the corresponding byte the pixel is in
       // There are 2 bytes per row (y * 2), and 4 pixels per byte (x / 4)
@@ -274,9 +274,10 @@ static void render_sprite_graphics(GBC_Graphics *self, Layer *layer, GContext *c
   uint16_t byte;
   uint8_t bit;
   uint8_t *byte_mod;
+  bool flip;
 
   self->stat &= ~STAT_OAM_FLAG; // Drawing sprites, clear OAM flag
-    sprite_mode = (bool)(LCDC_SPRITE_SIZE_FLAG & self->lcdc);
+  sprite_mode = (bool)(LCDC_SPRITE_SIZE_FLAG & self->lcdc);
   for (short sprite_id = 39; sprite_id >= 0; sprite_id--) { // Draw in reverse order so that sprite 0 is on top
     /*
       This entire for loop was previously implemented in draw_sprite_to_buffer(),
@@ -303,16 +304,19 @@ static void render_sprite_graphics(GBC_Graphics *self, Layer *layer, GContext *c
       // Then we draw the tile row by row
       for (tile_y = 0; tile_y < TILE_HEIGHT; tile_y++) {
         screen_y = sprite[1] + tile_y - SPRITE_OFFSET_Y + TILE_HEIGHT * tile_num; // On second tile, offset by TILE_HEIGHT
+        if (screen_y < 0 || screen_y >= SCREEN_HEIGHT) {
+          continue;
+        }
         for (tile_x = 0; tile_x < TILE_WIDTH; tile_x++) {
           // Check if the pixel is on the screen
           screen_x = sprite[0] + tile_x - SPRITE_OFFSET_X;
-          if (screen_x < 0 || screen_y < 0 || screen_x >= SCREEN_WIDTH || screen_y >= SCREEN_HEIGHT) {
+          if (screen_x < 0 || screen_x >= SCREEN_WIDTH) {
             continue;
           }
 
           // Get the tile x and y on the bg map
-          map_x = (uint8_t) (self->bg_scroll_x + screen_x);
-          map_y = (uint8_t) (self->bg_scroll_y + screen_y);
+          map_x = self->bg_scroll_x + screen_x;
+          map_y = self->bg_scroll_y + screen_y;
           map_tile_x = map_x >> 3; // map_x / TILE_WIDTH
           map_tile_y = map_y >> 3; // map_y / TILE_HEIGHT
 
@@ -335,12 +339,10 @@ static void render_sprite_graphics(GBC_Graphics *self, Layer *layer, GContext *c
             pixel_y = map_y & 7; // map_x % TILE_HEIGHT
 
             // Apply flip flags if necessary
-            if (bg_tile_attr & ATTR_FLIP_FLAG_X) {
-              pixel_x = TILE_WIDTH - pixel_x - 1; // Take the x position from the right when flipped
-            }
-            if (bg_tile_attr & ATTR_FLIP_FLAG_Y) {
-              pixel_y = TILE_HEIGHT - pixel_y - 1; // Take the y position from the bottom when flipped
-            }
+            flip = bg_tile_attr & ATTR_FLIP_FLAG_X;
+            pixel_x = ((pixel_x >> (flip >> 3)) - ((pixel_x + 1) >> ((ATTR_FLIP_FLAG_X ^ flip) >> 3))) & 7;
+            flip = bg_tile_attr & ATTR_FLIP_FLAG_Y;
+            pixel_y = ((pixel_y >> (flip >> 3)) - ((pixel_y + 1) >> ((ATTR_FLIP_FLAG_Y ^ flip) >> 3))) & 7;
 
             // To get the pixel, we first need to get the corresponding byte the pixel is in
             // There are 2 bytes per row (y * 2), and 4 pixels per byte (x / 4)
@@ -365,12 +367,10 @@ static void render_sprite_graphics(GBC_Graphics *self, Layer *layer, GContext *c
           pixel_y = tile_y & 7; // tile_y % TILE_HEIGHT
 
           // Apply flip flags if necessary
-          if (sprite[3] & ATTR_FLIP_FLAG_X) {
-            pixel_x = TILE_WIDTH - pixel_x - 1; // Take the x position from the right when flipped
-          }
-          if (sprite[3] & ATTR_FLIP_FLAG_Y) {
-            pixel_y = TILE_HEIGHT - pixel_y - 1; // Take the y position from the bottom when flipped
-          }
+          flip = sprite[3] & ATTR_FLIP_FLAG_X;
+          pixel_x = ((pixel_x >> (flip >> 3)) - ((pixel_x + 1) >> ((ATTR_FLIP_FLAG_X ^ flip) >> 3))) & 7;
+          flip = sprite[3] & ATTR_FLIP_FLAG_Y;
+          pixel_y = ((pixel_y >> (flip >> 3)) - ((pixel_y + 1) >> ((ATTR_FLIP_FLAG_Y ^ flip) >> 3))) & 7;
 
           // To get the pixel, we first need to get the corresponding byte the pixel is in
           // There are 2 bytes per row (y * 2), and 4 pixels per byte (x / 4)

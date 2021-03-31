@@ -139,7 +139,6 @@ static void render_bg_graphics(GBC_Graphics *self, Layer *layer, GContext *ctx) 
   }
   GBitmap *fb = graphics_capture_frame_buffer(ctx);
   uint8_t *fb_data = gbitmap_get_data(fb);
-  uint16_t row_size = gbitmap_get_bytes_per_row(fb);
 
   GRect bounds = layer_get_bounds(layer);
   uint8_t window_offset_y = clamp_short_to_uint8_t(self->window_offset_y, 0, bounds.size.h);
@@ -212,7 +211,7 @@ static void render_bg_graphics(GBC_Graphics *self, Layer *layer, GContext *ctx) 
 
       // Once we have the byte, we need to get the 2 bit pixel out of the byte
       // This is achieved by shifting the byte (3 - x % 4) * (2 bits per pixel)
-      shift = (3 - (pixel_x & 3)) << 1; // (3 - pixel_x % 4) * 2
+      shift = (3 ^ (pixel_x & 3)) << 1; // (3 - pixel_x % 4) * 2
 
       // We shift the byte and get rid of any unwanted bits
       pixel = 0b11 & (pixel_byte >> shift);
@@ -221,9 +220,9 @@ static void render_bg_graphics(GBC_Graphics *self, Layer *layer, GContext *ctx) 
       pixel_color = self->bg_palette_bank[((tile_attr & ATTR_PALETTE_MASK) << 2) + pixel]; // (tile_attr & ATTR_PALETTE_MASK) * 4
       
       #if defined(PBL_COLOR)
-        memset(&fb_data[x + self->line_y * row_size], pixel_color, 1);
+        memset(&fb_data[x + (self->line_y << 7) + (self->line_y << 4)], pixel_color, 1); // x + self->line_y * row_size
       #else
-        byte = (x >> 3) + self->line_y * row_size; // x / 8
+        byte = (x >> 3) + (self->line_y << 4) + (self->line_y << 2); // x / 8 + self->line_y * row_size
         bit = x & 7; // x % 8
         byte_mod = &fb_data[byte];
         *byte_mod ^= (-pixel_color ^ *byte_mod) & (1 << bit);
@@ -259,7 +258,6 @@ static void render_sprite_graphics(GBC_Graphics *self, Layer *layer, GContext *c
   }
   GBitmap *fb = graphics_capture_frame_buffer(ctx);
   uint8_t *fb_data = gbitmap_get_data(fb);
-  uint16_t row_size = gbitmap_get_bytes_per_row(fb);
 
   // Predefine the variables we're going to use
   short screen_x, screen_y;
@@ -351,7 +349,7 @@ static void render_sprite_graphics(GBC_Graphics *self, Layer *layer, GContext *c
 
             // Once we have the byte, we need to get the 2 bit pixel out of the byte
             // This is achieved by shifting the byte (3 - x % 4) * (2 bits per pixel)
-            shift = (3 - (pixel_x & 3)) << 1; // (3 - pixel_x % 4) * 2
+            shift = (3 ^ (pixel_x & 3)) << 1; // (3 - pixel_x % 4) * 2
 
             // We shift the byte and get rid of any unwanted bits
             pixel = 0b11 & (pixel_byte >> shift);
@@ -379,7 +377,7 @@ static void render_sprite_graphics(GBC_Graphics *self, Layer *layer, GContext *c
 
           // Once we have the byte, we need to get the 2 bit pixel out of the byte
           // This is achieved by shifting the byte (3 - x % 4) * (2 bits per pixel)
-          shift = (3 - (pixel_x & 3)) << 1; // (3 - pixel_x % 4) * 2
+          shift = (3 ^ (pixel_x & 3)) << 1; // (3 - pixel_x % 4) * 2
 
           // We shift the byte and get rid of any unwanted bits
           pixel = 0b11 & (pixel_byte >> shift);
@@ -392,10 +390,10 @@ static void render_sprite_graphics(GBC_Graphics *self, Layer *layer, GContext *c
           pixel_color = self->sprite_palette_bank[((sprite[3] & ATTR_PALETTE_MASK) << 2) + pixel]; // (tile_attr & ATTR_PALETTE_MASK) * PALETTE_SIZE + pixel
           
           #if defined(PBL_COLOR)
-          memset(&fb_data[screen_x + screen_y * row_size], pixel_color, 1);
+            memset(&fb_data[screen_x + (screen_y << 7) + (screen_y << 4)], pixel_color, 1); // x + self->line_y * row_size
           #else
-            byte = screen_x / 8 + screen_y * row_size; // screen x / 
-            bit = screen_x % 8; 
+            byte = (screen_x >> 3) + (screen_y << 4) + (screen_y << 2); // x / 8 + self->line_y * row_size
+            bit = screen_x & 7; // x % 8
             byte_mod = &fb_data[byte];
             *byte_mod ^= (-pixel_color ^ *byte_mod) & (1 << bit);
           #endif

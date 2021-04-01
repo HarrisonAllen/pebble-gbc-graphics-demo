@@ -43,8 +43,8 @@
  * 4 bytes per sprite * 40 sprite slots = 160 bytes
  */
 #define OAM_SIZE 160
-#define SCREEN_WIDTH 144  ///> Width of the screen in pixels
-#define SCREEN_HEIGHT 144 ///> Height of the screen in pixels
+// #define SCREEN_WIDTH 144  ///> Width of the screen in pixels
+// #define SCREEN_HEIGHT 144 ///> Height of the screen in pixels
 #define SPRITE_OFFSET_X 8 ///> The x offset to allow for offscreen rendering
 #define SPRITE_OFFSET_Y 16 ///> The y offset to allow for offscreen rendering
 
@@ -192,19 +192,22 @@ struct _gbc_graphics {
     void (*vblank_interrupt_callback)(GBC_Graphics *); ///> The callback for the VBlank interrupt
     void (*line_compare_interrupt_callback)(GBC_Graphics *); ///> The callback for the line compare interrupt
     void (*oam_interrupt_callback)(GBC_Graphics *); ///> The callback for the oam interrupt
-    uint8_t screen_y_offset; ///> The offset of the screen from the top of the display
+
+    uint8_t screen_x_origin; ///> The start x position of the rendered screen
+    uint8_t screen_y_origin; ///> The start y position of the rendered screen
+    uint8_t screen_width; ///> The width of the rendered screen
+    uint8_t screen_height; ///> The height of the rendered screen
 };
 
 /**
  * Creates a GBC Graphics object
  * 
  * @param window The window in which to display the GBC Graphics object
- * @param screen_y_offset The offset of the screen from the top of the display, 12 is recommended
  * 
  * @return a pointer to the created GBC Graphics object
  * @note I recommend creating the GBC Graphics object in window_load or an equivalent function
  */
-GBC_Graphics *GBC_Graphics_ctor(Window *window, uint8_t screen_y_offset);
+GBC_Graphics *GBC_Graphics_ctor(Window *window);
 
 /**
  * Destroys the GBC Graphics display object by freeing any memory it uses
@@ -212,6 +215,94 @@ GBC_Graphics *GBC_Graphics_ctor(Window *window, uint8_t screen_y_offset);
  * @param self A pointer to the target GBC Graphics object
  */
 void GBC_Graphics_destroy(GBC_Graphics *self);
+
+/**
+ * Sets the boundaries of the screen to render
+ * @note Decreasing the size of the screen will greatly increase FPS, try GRect(0, 12, 144, 144)
+ *
+ * @param self A pointer to the target GBC Graphics object
+ * @param bounds The boundaries of the screen, GRect(screen x origin, screen y origin, screen width, screen height)
+ */
+void GBC_Graphics_set_screen_bounds(GBC_Graphics *self, GRect bounds);
+
+/**
+ * Sets the x origin of the screen
+ *
+ * @param self A pointer to the target GBC Graphics object
+ * @param new_x The new x origin of the screen
+ */
+void GBC_Graphics_set_screen_x_origin(GBC_Graphics *self, uint8_t new_x);
+
+/**
+ * Sets the y origin of the screen
+ *
+ * @param self A pointer to the target GBC Graphics object
+ * @param new_y The new y origin of the screen
+ */
+void GBC_Graphics_set_screen_y_origin(GBC_Graphics *self, uint8_t new_y);
+
+/**
+ * Sets the width of the screen
+ * @note Reducing this parameter will increase FPS
+ *
+ * @param self A pointer to the target GBC Graphics object
+ * @param new_width The new width of the screen
+ */
+void GBC_Graphics_set_screen_width(GBC_Graphics *self, uint8_t new_width);
+
+/**
+ * Sets the height of the screen
+ * @note Reducing this parameter will increase FPS
+ *
+ * @param self A pointer to the target GBC Graphics object
+ * @param new_height The new height of the screen
+ */
+void GBC_Graphics_set_screen_height(GBC_Graphics *self, uint8_t new_height);
+
+/**
+ * Gets the boundaries that the screen is rendering within
+ *
+ * @param self A pointer to the target GBC Graphics object
+ *
+ * @return The screen's boundaries
+ */
+GRect GBC_Graphics_get_screen_bounds(GBC_Graphics *self);
+
+/**
+ * Gets the x origin of the screen
+ *
+ * @param self A pointer to the target GBC Graphics object
+ *
+ * @return The screen's x origin
+ */
+uint8_t GBC_Graphics_get_screen_x_origin(GBC_Graphics *self);
+
+/**
+ * Gets the y origin of the screen
+ *
+ * @param self A pointer to the target GBC Graphics object
+ *
+ * @return The screen's y origin
+ */
+uint8_t GBC_Graphics_get_screen_y_origin(GBC_Graphics *self);
+
+/**
+ * Gets the width of the screen
+ *
+ * @param self A pointer to the target GBC Graphics object
+ *
+ * @return The screen's width
+ */
+uint8_t GBC_Graphics_get_screen_width(GBC_Graphics *self);
+
+/**
+ * Gets the height of the screen
+ *
+ * @param self A pointer to the target GBC Graphics object
+ *
+ * @return The screen's height
+ */
+uint8_t GBC_Graphics_get_screen_height(GBC_Graphics *self);
 
 /**
  * Loads tiles from a tilesheet in storage into vram

@@ -7,7 +7,7 @@ static GBC_Graphics *s_graphics;
 static void bg_update_proc(Layer *layer, GContext *ctx);
 static void sprite_update_proc(Layer *layer, GContext *ctx);
 
-GBC_Graphics *GBC_Graphics_ctor(Window *window, uint8_t screen_y_offset) { 
+GBC_Graphics *GBC_Graphics_ctor(Window *window) { 
   GBC_Graphics *self = NULL;
   self = malloc(sizeof(GBC_Graphics));
   if (self == NULL)
@@ -16,7 +16,7 @@ GBC_Graphics *GBC_Graphics_ctor(Window *window, uint8_t screen_y_offset) {
   // Initialize the bg/window and sprite layers
   window_set_background_color(window, GColorBlack);
   Layer *window_layer = window_get_root_layer(window);
-  GRect bounds = GRect(0, screen_y_offset, SCREEN_WIDTH, SCREEN_HEIGHT);
+  GRect bounds = layer_get_bounds(window_layer);
   self->bg_layer = layer_create(bounds);
   self->sprite_layer = layer_create(bounds);
   layer_set_update_proc(self->bg_layer, bg_update_proc);
@@ -24,7 +24,11 @@ GBC_Graphics *GBC_Graphics_ctor(Window *window, uint8_t screen_y_offset) {
   layer_add_child(window_layer, self->bg_layer);
   layer_add_child(window_layer, self->sprite_layer);
 
-  self->screen_y_offset = screen_y_offset;
+  // Set the screen boundaries to the size of the Pebble display
+  self->screen_x_origin = 0;
+  self->screen_y_origin = 0;
+  self->screen_width = 144;
+  self->screen_height = 168;
 
   // Allocate 4 banks of VRAM space
   self->vram = (uint8_t*)malloc(VRAM_BANK_SIZE * 4);
@@ -63,6 +67,52 @@ void GBC_Graphics_destroy(GBC_Graphics *self) {
   if (self == NULL) return;
     free(self);
 }
+
+
+void GBC_Graphics_set_screen_bounds(GBC_Graphics *self, GRect bounds) {
+  self->screen_x_origin = bounds.origin.x;
+  self->screen_y_origin = bounds.origin.y;
+  self->screen_width = bounds.size.w;
+  self->screen_height = bounds.size.h;
+}
+
+void GBC_Graphics_set_screen_x_origin(GBC_Graphics *self, uint8_t new_x) {
+  self->screen_x_origin = new_x;
+}
+
+void GBC_Graphics_set_screen_y_origin(GBC_Graphics *self, uint8_t new_y) {
+  self->screen_y_origin = new_y;
+}
+
+void GBC_Graphics_set_screen_width(GBC_Graphics *self, uint8_t new_width) {
+  self->screen_width = new_width;
+}
+
+void GBC_Graphics_set_screen_height(GBC_Graphics *self, uint8_t new_height) {
+  self->screen_height = new_height;
+}
+
+
+GRect GBC_Graphics_get_screen_bounds(GBC_Graphics *self) {
+  return GRect(self->screen_x_origin, self->screen_y_origin, self->screen_width, self->screen_height);
+}
+
+uint8_t GBC_Graphics_get_screen_x_origin(GBC_Graphics *self) {
+  return self->screen_x_origin;
+}
+
+uint8_t GBC_Graphics_get_screen_y_origin(GBC_Graphics *self) {
+  return self->screen_y_origin;
+}
+
+uint8_t GBC_Graphics_get_screen_width(GBC_Graphics *self) {
+  return self->screen_width;
+}
+
+uint8_t GBC_Graphics_get_screen_height(GBC_Graphics *self) {
+  return self->screen_height;
+}
+
 
 void GBC_Graphics_load_from_tilesheet_into_vram(GBC_Graphics *self, uint32_t tilesheet_resource, uint16_t tilesheet_tile_offset, 
                                             uint16_t tiles_to_load, uint16_t vram_tile_offset, uint8_t vram_bank_number) {
@@ -144,8 +194,8 @@ static void render_bg_graphics(GBC_Graphics *self, Layer *layer, GContext *ctx) 
   uint8_t *fb_data = gbitmap_get_data(fb);
 
   GRect bounds = layer_get_bounds(layer);
-  uint8_t window_offset_y = clamp_short_to_uint8_t(self->window_offset_y, 0, bounds.size.h);
-  uint8_t window_offset_x = clamp_short_to_uint8_t(self->window_offset_x, 0, bounds.size.w);
+  uint8_t window_offset_y = clamp_short_to_uint8_t(self->window_offset_y, 0, self->screen_height);
+  uint8_t window_offset_x = clamp_short_to_uint8_t(self->window_offset_x, 0, self->screen_width);
 
   // Predefine the variables we'll use in the loop
   uint8_t map_x, map_y, map_tile_x, map_tile_y, tile_num, tile_attr;
@@ -160,7 +210,7 @@ static void render_bg_graphics(GBC_Graphics *self, Layer *layer, GContext *ctx) 
   bool in_window_y;
 
   self->stat &= ~STAT_VBLANK_FLAG; // No longer in VBlank while we draw
-  for (self->line_y = 0; self->line_y < bounds.size.h; self->line_y++) {
+  for (self->line_y = 0; self->line_y < self->screen_height; self->line_y++) {
     // Check if the current line matches the line compare value, and then do the callback
     self->stat &= ~STAT_LINE_COMP_FLAG;
     self->stat |= STAT_LINE_COMP_FLAG * (self->line_y == self->line_y_compare);
@@ -171,7 +221,7 @@ static void render_bg_graphics(GBC_Graphics *self, Layer *layer, GContext *ctx) 
     in_window_y = self->line_y >= window_offset_y;
 
     self->stat &= ~STAT_HBLANK_FLAG; // No longer in HBlank while we draw the line
-    for(x = bounds.origin.x; x < bounds.size.w; x++) {
+    for(x = 0; x < self->screen_width; x++) {
       // Decide what pixel to draw, first check if we're in the window bounds
       if (in_window_y && x >= window_offset_x) {
         map_x = x - self->window_offset_x;
@@ -221,15 +271,11 @@ static void render_bg_graphics(GBC_Graphics *self, Layer *layer, GContext *ctx) 
 
       // Finally, we get the corresponding color from attribute palette
       pixel_color = self->bg_palette_bank[((tile_attr & ATTR_PALETTE_MASK) << 2) + pixel]; // (tile_attr & ATTR_PALETTE_MASK) * 4
-      
-      // HELLO FUTURE ME
-      // YOU BROKE EVERYTHING BY TRYING TO GET RID OF ONE ROW (168->160)
-      // GOOD LUCK DINGUS
 
       #if defined(PBL_COLOR)
-        memset(&fb_data[x + ((self->line_y + self->screen_y_offset) << 7) + ((self->line_y + self->screen_y_offset) << 4)], pixel_color, 1); // x + self->line_y * row_size
+        memset(&fb_data[x + ((self->line_y + self->screen_y_origin) << 7) + ((self->line_y + self->screen_y_origin) << 4)], pixel_color, 1); // x + self->line_y * row_size
       #else
-        uint16_t byte = (x >> 3) + ((self->line_y + self->screen_y_offset) << 4) + ((self->line_y + self->screen_y_offset) << 2); // x / 8 + self->line_y * row_size
+        uint16_t byte = (x >> 3) + ((self->line_y + self->screen_y_origin) << 4) + ((self->line_y + self->screen_y_origin) << 2); // x / 8 + self->line_y * row_size
         uint8_t bit = x & 7; // x % 8
         uint8_t *byte_mod = &fb_data[byte];
         *byte_mod ^= (-pixel_color ^ *byte_mod) & (1 << bit);
@@ -287,7 +333,7 @@ static void render_sprite_graphics(GBC_Graphics *self, Layer *layer, GContext *c
     */
     sprite = &self->oam[sprite_id*4];
     // Don't draw the sprite if it's offscreen
-    if (sprite[0] == 0 || sprite[1] == 0 || sprite[0] >= SCREEN_WIDTH + SPRITE_OFFSET_X || sprite[1] >= SCREEN_HEIGHT + SPRITE_OFFSET_Y) {
+    if (sprite[0] == 0 || sprite[1] == 0 || sprite[0] >= self->screen_width + SPRITE_OFFSET_X || sprite[1] >= self->screen_height + SPRITE_OFFSET_Y) {
       continue;
     }
 
@@ -306,7 +352,7 @@ static void render_sprite_graphics(GBC_Graphics *self, Layer *layer, GContext *c
       // Then we draw the tile row by row
       for (tile_y = 0; tile_y < TILE_HEIGHT; tile_y++) {
         screen_y = sprite[1] + tile_y - SPRITE_OFFSET_Y + TILE_HEIGHT * tile_num; // On second tile, offset by TILE_HEIGHT
-        if (screen_y >= SCREEN_HEIGHT) {
+        if (screen_y >= self->screen_height) {
           break;
         }
         if (screen_y < 0) {
@@ -315,7 +361,7 @@ static void render_sprite_graphics(GBC_Graphics *self, Layer *layer, GContext *c
         for (tile_x = 0; tile_x < TILE_WIDTH; tile_x++) {
           // Check if the pixel is on the screen
           screen_x = sprite[0] + tile_x - SPRITE_OFFSET_X;
-          if (screen_x >= SCREEN_WIDTH) {
+          if (screen_x >= self->screen_width) {
             break;
           }
           if (screen_x < 0) {
@@ -400,9 +446,9 @@ static void render_sprite_graphics(GBC_Graphics *self, Layer *layer, GContext *c
           pixel_color = self->sprite_palette_bank[((sprite[3] & ATTR_PALETTE_MASK) << 2) + pixel]; // (tile_attr & ATTR_PALETTE_MASK) * PALETTE_SIZE + pixel
           
           #if defined(PBL_COLOR)
-            memset(&fb_data[screen_x + ((screen_y + self->screen_y_offset) << 7) + ((screen_y + self->screen_y_offset) << 4)], pixel_color, 1); // x + self->line_y * row_size
+            memset(&fb_data[(screen_x + self->screen_x_origin) + ((screen_y + self->screen_y_origin) << 7) + ((screen_y + self->screen_y_origin) << 4)], pixel_color, 1); // x + self->line_y * row_size
           #else
-            uint16_t byte = (screen_x >> 3) + ((screen_y + self->screen_y_offset) << 4) + ((screen_y + self->screen_y_offset) << 2); // x / 8 + self->line_y * row_size
+            uint16_t byte = ((screen_x + self->screen_x_origin) >> 3) + ((screen_y + self->screen_y_origin) << 4) + ((screen_y + self->screen_y_origin) << 2); // x / 8 + self->line_y * row_size
             uint8_t bit = screen_x & 7; // x % 8
             uint8_t *byte_mod = &fb_data[byte];
             *byte_mod ^= (-pixel_color ^ *byte_mod) & (1 << bit);
@@ -653,8 +699,8 @@ uint8_t GBC_Graphics_window_get_attr(GBC_Graphics *self, uint8_t x, uint8_t y) {
 }
 
 void GBC_Graphics_window_move(GBC_Graphics *self, short dx, short dy) {
-  short new_x = clamp_short_to_uint8_t(self->window_offset_x + dx, 0, SCREEN_WIDTH);
-  short new_y = clamp_short_to_uint8_t(self->window_offset_y + dy, 0, SCREEN_HEIGHT);
+  short new_x = clamp_short_to_uint8_t(self->window_offset_x + dx, 0, self->screen_width);
+  short new_y = clamp_short_to_uint8_t(self->window_offset_y + dy, 0, self->screen_height);
 
   self->window_offset_x = new_x;
   self->window_offset_y = new_y;

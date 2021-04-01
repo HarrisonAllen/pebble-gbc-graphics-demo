@@ -6,9 +6,9 @@
 #define TEXT_START 58
 #define NUMBER_START 84
 #define SYMBOL_START 94
-#define MAX_WALK_SPEED 2
-#define MAX_RUN_SPEED 5
-#define MAX_JUMP_SPEED 5
+#define MAX_WALK_SPEED 1
+#define MAX_RUN_SPEED 2
+#define MAX_JUMP_SPEED 3
 #define MAX_FALL_SPEED -100
 #define MAX_JUMP_HEIGHT 64
 #define MIN_JUMP_HEIGHT 16

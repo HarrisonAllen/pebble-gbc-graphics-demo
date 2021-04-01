@@ -148,8 +148,8 @@ static void update_top_bar(GBC_Graphics *graphics) {
         Mario_write_string_to_background(graphics, 0, 0, 0 | ATTR_PRIORITY_FLAG, s_text_buffer, 0);
     } else {
         clear_text_buffer(s_text_buffer);
-        // snprintf(s_text_buffer, sizeof(s_text_buffer), " %5d x%02d o%03d", s_player_score, s_player_coins, s_time);
-        snprintf(s_text_buffer, sizeof(s_text_buffer), " %5d x%02d", s_player_score, s_player_coins);
+        snprintf(s_text_buffer, sizeof(s_text_buffer), " %5d x%02d o%03d", s_player_score, s_player_coins, s_time);
+        // snprintf(s_text_buffer, sizeof(s_text_buffer), " %5d x%02d", s_player_score, s_player_coins);
         Mario_write_string_to_background(graphics, 0, 0, 0 | ATTR_PRIORITY_FLAG, s_text_buffer, 0);
         GBC_Graphics_bg_set_tile_and_attrs(graphics, 7, 0, convert_char_to_vram_index('$'), 1 | ATTR_PRIORITY_FLAG);
     }
@@ -191,6 +191,8 @@ void Mario_initialize(GBC_Graphics *graphics) {
         s_player_y = 32 - 1;
     }
 
+    GBC_Graphics_set_screen_bounds(graphics, SCREEN_BOUNDS_SQUARE);
+
     ResHandle handle = resource_get_handle(RESOURCE_ID_DATA_MARIO_WORLD_MAP);
     size_t res_size = resource_size(handle);
     s_world_map = (uint8_t*)malloc(res_size);
@@ -207,7 +209,7 @@ void Mario_initialize(GBC_Graphics *graphics) {
 
     clear_background(graphics);
     uint16_t start_col = s_player_world_x / 8 - 2;
-        for (s_column_to_load = start_col; s_column_to_load < start_col + GBC_Graphics_get_screen_width(graphics) / TILE_WIDTH + 1; s_column_to_load++) {
+    for (s_column_to_load = start_col; s_column_to_load < start_col + GBC_Graphics_get_screen_width(graphics) / TILE_WIDTH + 1; s_column_to_load++) {
         Mario_load_column_at_pos(graphics, s_column_to_load, (GBC_Graphics_bg_get_scroll_x(graphics) / TILE_WIDTH) + (s_column_to_load - start_col));
     }
     update_top_bar(graphics);
@@ -282,7 +284,7 @@ static uint8_t player_collision(GBC_Graphics *graphics) {
 
 static void play(GBC_Graphics *graphics) {
     s_frame++;
-    if (s_frame % 4 == 0) {
+    if (s_frame % 8 == 0) {
         s_cur_pal = (s_cur_pal + 1) % 5;
         uint8_t *pal = s_mystery_block_palettes[s_cur_pal];
         GBC_Graphics_set_bg_palette(graphics, 1, pal[0], pal[1], pal[2], pal[3]);
@@ -290,15 +292,15 @@ static void play(GBC_Graphics *graphics) {
     }
     
     // Update the top bar with our current stats
-    if (s_frame % 20 == 0) {
+    if (s_frame % 40 == 0) {
         if (s_time > 0) {
             s_time --;
         }
     }
-    if (s_frame % 3 == 0) {
+    if (s_frame % 6 == 0) {
         s_player_score += (s_player_x_speed > 0) ? 10 : 0;
     }
-    if (s_frame % 100 == 0) {
+    if (s_frame % 200 == 0) {
         s_player_coins = (s_player_coins + 1) % 100;
     }
     update_top_bar(graphics);
@@ -344,7 +346,9 @@ static void play(GBC_Graphics *graphics) {
             }
             break;
         case MJ_FALLING:
-            s_player_y_speed--;
+            if (s_frame % 3 == 0) {
+                s_player_y_speed--;
+            }
             if (s_player_y_speed < MAX_FALL_SPEED) {
                 s_player_y_speed = MAX_FALL_SPEED;
             }
@@ -390,8 +394,13 @@ static void play(GBC_Graphics *graphics) {
 
     if (s_player_jump_state == MJ_STANDING) {
         if (s_player_x_speed > 0) {
-            GBC_Graphics_oam_set_sprite_tile(graphics, 0, mario_sprites[1 + (s_frame % 9) / 3]);
-            GBC_Graphics_oam_set_sprite_tile(graphics, 1, mario_sprites[1 + (s_frame % 9) / 3] + 2);
+            if (s_player_x_speed > MAX_WALK_SPEED) {
+                GBC_Graphics_oam_set_sprite_tile(graphics, 0, mario_sprites[1 + (s_frame % 12) / 4]);
+                GBC_Graphics_oam_set_sprite_tile(graphics, 1, mario_sprites[1 + (s_frame % 12) / 4] + 2);
+            } else {
+                GBC_Graphics_oam_set_sprite_tile(graphics, 0, mario_sprites[1 + (s_frame % 24) / 8]);
+                GBC_Graphics_oam_set_sprite_tile(graphics, 1, mario_sprites[1 + (s_frame % 24) / 8] + 2);
+            }
         } else {
             GBC_Graphics_oam_set_sprite_tile(graphics, 0, mario_sprites[0]);
             GBC_Graphics_oam_set_sprite_tile(graphics, 1, mario_sprites[0] + 2);

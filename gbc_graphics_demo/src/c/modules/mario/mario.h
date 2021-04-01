@@ -52,7 +52,7 @@ void Mario_write_string_to_background(GBC_Graphics *graphics, uint8_t bg_tile_x,
 void Mario_initialize(GBC_Graphics *graphics);
 void Mario_deinitialize(GBC_Graphics *graphics);
 void Mario_step(GBC_Graphics *graphics);
-void Mario_load_column_at_pos(GBC_Graphics *graphics, uint16_t column, uint8_t bg_tile_x, uint8_t bg_tile_y);
+void Mario_load_column_at_pos(GBC_Graphics *graphics, uint16_t column, uint8_t bg_tile_x);
 void Mario_handle_select(GBC_Graphics *graphics);
 void Mario_handle_back(GBC_Graphics *graphics);
 void Mario_handle_down(GBC_Graphics *graphics, bool down);

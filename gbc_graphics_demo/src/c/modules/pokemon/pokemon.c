@@ -40,8 +40,8 @@ static uint8_t interp_int(uint8_t start, uint8_t end, uint8_t time, uint8_t time
     return start + (end - start) * (((float)time) / (float)time_max);
 }
 
-PokemonSquareInfo get_square_info(uint8_t x, uint8_t y) {
-  return screen_info[x / (TILE_WIDTH * 2) + y / (TILE_WIDTH * 2) * (SCREEN_WIDTH / (TILE_WIDTH * 2))];
+PokemonSquareInfo get_square_info(GBC_Graphics *graphics, uint8_t x, uint8_t y) {
+  return screen_info[x / (TILE_WIDTH * 2) + y / (TILE_WIDTH * 2) * (GBC_Graphics_get_screen_width(graphics) / (TILE_WIDTH * 2))];
 }
 
 /*
@@ -208,7 +208,7 @@ void Pokemon_step(GBC_Graphics *graphics) {
     s_target_x = s_player_x + direction_to_point(s_player_direction).x * (TILE_WIDTH * 2);
     s_target_y = s_player_y + direction_to_point(s_player_direction).y * (TILE_HEIGHT * 2);
     
-    s_can_move = get_square_info(s_target_x, s_target_y) != BLOCKING;
+    s_can_move = get_square_info(graphics, s_target_x, s_target_y) != BLOCKING;
 
     if (!s_can_move) {
       s_target_x = s_player_x;
@@ -245,7 +245,7 @@ void Pokemon_step(GBC_Graphics *graphics) {
         s_player_x += direction_to_point(s_player_direction).x * 2;
         s_player_y += direction_to_point(s_player_direction).y * 2;
       }
-      if (get_square_info(s_target_x, s_target_y)) {
+      if (get_square_info(graphics, s_target_x, s_target_y)) {
         switch(s_walk_frame) {
           case 2:
           case 3:
@@ -269,7 +269,7 @@ void Pokemon_step(GBC_Graphics *graphics) {
       switch(s_walk_frame) {
         case 7:
           s_player_mode = P_STAND;
-          if(get_square_info(s_player_x, s_player_y) == GRASS) {
+          if(get_square_info(graphics, s_player_x, s_player_y) == GRASS) {
             GBC_Graphics_oam_set_sprite_priority(graphics, 4, true);
             GBC_Graphics_oam_set_sprite_priority(graphics, 5, true);
           }

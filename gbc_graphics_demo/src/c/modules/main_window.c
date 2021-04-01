@@ -18,6 +18,15 @@ static uint16_t s_frame_counter;
 char s_frame_buffer[5] = {0};
 static uint8_t s_counter;
 
+static uint8_t screen_bounds[][2] = {
+  {0, 168},
+  {4, 160},
+  {12, 144},
+  {20, 128},
+  {28, 112},
+  {36, 96}
+};
+
 typedef enum {
   DM_START,
   DM_MARIO,
@@ -151,6 +160,10 @@ static void up_click_handler(ClickRecognizerRef recognizer, void *context) {
 }
 
 static void down_click_handler(ClickRecognizerRef recognizer, void *context) {
+  s_counter = (s_counter + 1) % 6;
+  GBC_Graphics_set_screen_bounds(s_graphics, GRect(0, screen_bounds[s_counter][0], 144, screen_bounds[s_counter][1]));
+  Mario_deinitialize(s_graphics);
+  Mario_initialize(s_graphics);
   switch(s_demo_mode) {
     case DM_MARIO:
       Mario_handle_down_click(s_graphics);
@@ -353,7 +366,7 @@ static void window_load(Window *window) {
   Layer *window_layer = window_get_root_layer(window);
   GRect bounds = layer_get_bounds(window_layer);
 
-  s_graphics = GBC_Graphics_ctor(window, 12);
+  s_graphics = GBC_Graphics_ctor(window);
   load_demo(s_demo_mode);
   // print_array(s_graphics->bg_tilemap, TILEMAP_SIZE, 32);
   // print_array(s_graphics->bg_attrmap, ATTRMAP_SIZE, 32);

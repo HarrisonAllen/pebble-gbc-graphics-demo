@@ -158,7 +158,7 @@ static void update_top_bar(GBC_Graphics *graphics) {
 static void draw_pause_menu(GBC_Graphics *graphics, uint8_t cursor_pos, bool saved, bool load_failed) {
     clear_window(graphics);
     uint8_t start_x = 5;
-    uint8_t start_y = 4;
+    uint8_t start_y = 2;
     write_string_to_window(graphics, start_x, start_y + 0, 6, "CONTINUE", 0);
     write_string_to_window(graphics, start_x, start_y + 2, 6, "SAVE", 0);
     if (saved) {
@@ -203,17 +203,17 @@ void Mario_initialize(GBC_Graphics *graphics) {
 
     GBC_Graphics_load_from_tilesheet_into_vram(graphics, RESOURCE_ID_DATA_MARIO_TILESHEET, 0, 105, 0, 0);
     GBC_Graphics_load_from_tilesheet_into_vram(graphics, RESOURCE_ID_DATA_MARIO_SPRITESHEET, 0, 20, 0, 1);
-    GBC_Graphics_bg_set_scroll_pos(graphics, 0, MAP_HEIGHT * TILE_HEIGHT - SCREEN_HEIGHT);
+    GBC_Graphics_bg_set_scroll_pos(graphics, 0, MAP_HEIGHT * TILE_HEIGHT - GBC_Graphics_get_screen_height(graphics));
 
     clear_background(graphics);
     uint16_t start_col = s_player_world_x / 8 - 2;
-        for (s_column_to_load = start_col; s_column_to_load < start_col + SCREEN_WIDTH / TILE_WIDTH + 1; s_column_to_load++) {
-        Mario_load_column_at_pos(graphics, s_column_to_load, (GBC_Graphics_bg_get_scroll_x(graphics) / TILE_WIDTH) + (s_column_to_load - start_col), (GBC_Graphics_bg_get_scroll_y(graphics) / TILE_HEIGHT));
+        for (s_column_to_load = start_col; s_column_to_load < start_col + GBC_Graphics_get_screen_width(graphics) / TILE_WIDTH + 1; s_column_to_load++) {
+        Mario_load_column_at_pos(graphics, s_column_to_load, (GBC_Graphics_bg_get_scroll_x(graphics) / TILE_WIDTH) + (s_column_to_load - start_col));
     }
     update_top_bar(graphics);
     
     clear_window(graphics);
-    GBC_Graphics_window_set_offset_pos(graphics, 0, SCREEN_HEIGHT);
+    GBC_Graphics_window_set_offset_pos(graphics, 0, GBC_Graphics_get_screen_height(graphics));
     draw_pause_menu(graphics, s_cursor_pos, s_saved, s_load_failed);
 
     GBC_Graphics_stat_set_line_compare_interrupt_enabled(graphics, true);
@@ -239,8 +239,8 @@ void Mario_initialize(GBC_Graphics *graphics) {
         GBC_Graphics_oam_hide_sprite(graphics, i);
     }
     GBC_Graphics_lcdc_set_8x16_sprite_mode_enabled(graphics, true);
-    GBC_Graphics_oam_set_sprite(graphics, 0, s_player_x, SCREEN_HEIGHT - s_player_y + SPRITE_OFFSET_Y, MARIO_STAND, GBC_Graphics_attr_make(4, 1, false, false, false));
-    GBC_Graphics_oam_set_sprite(graphics, 1, s_player_x + TILE_WIDTH, SCREEN_HEIGHT - s_player_y + SPRITE_OFFSET_Y, MARIO_STAND + 2, GBC_Graphics_attr_make(4, 1, false, false, false));
+    GBC_Graphics_oam_set_sprite(graphics, 0, s_player_x, GBC_Graphics_get_screen_height(graphics) - s_player_y + SPRITE_OFFSET_Y, MARIO_STAND, GBC_Graphics_attr_make(4, 1, false, false, false));
+    GBC_Graphics_oam_set_sprite(graphics, 1, s_player_x + TILE_WIDTH, GBC_Graphics_get_screen_height(graphics) - s_player_y + SPRITE_OFFSET_Y, MARIO_STAND + 2, GBC_Graphics_attr_make(4, 1, false, false, false));
     
     #if defined(PBL_COLOR)
         GBC_Graphics_set_sprite_palette(graphics, 4, 0b11011011, 0b11111001, 0b11100100, 0b11110000);
@@ -334,8 +334,8 @@ static void play(GBC_Graphics *graphics) {
                     break;
                 }
             }
-            GBC_Graphics_oam_set_sprite_y(graphics, 0, SCREEN_HEIGHT - s_player_y + SPRITE_OFFSET_Y);
-            GBC_Graphics_oam_set_sprite_y(graphics, 1, SCREEN_HEIGHT - s_player_y + SPRITE_OFFSET_Y);
+            GBC_Graphics_oam_set_sprite_y(graphics, 0, GBC_Graphics_get_screen_height(graphics) - s_player_y + SPRITE_OFFSET_Y);
+            GBC_Graphics_oam_set_sprite_y(graphics, 1, GBC_Graphics_get_screen_height(graphics) - s_player_y + SPRITE_OFFSET_Y);
             if (!s_up_pressed && s_player_y - s_player_jump_start_y >= MIN_JUMP_HEIGHT) {
                 s_player_jump_state = MJ_FALLING;
             }
@@ -363,8 +363,8 @@ static void play(GBC_Graphics *graphics) {
                     break;
                 }
             }
-            GBC_Graphics_oam_set_sprite_y(graphics, 0, SCREEN_HEIGHT - s_player_y + SPRITE_OFFSET_Y);
-            GBC_Graphics_oam_set_sprite_y(graphics, 1, SCREEN_HEIGHT - s_player_y + SPRITE_OFFSET_Y);
+            GBC_Graphics_oam_set_sprite_y(graphics, 0, GBC_Graphics_get_screen_height(graphics) - s_player_y + SPRITE_OFFSET_Y);
+            GBC_Graphics_oam_set_sprite_y(graphics, 1, GBC_Graphics_get_screen_height(graphics) - s_player_y + SPRITE_OFFSET_Y);
             break;
     }
 
@@ -411,9 +411,9 @@ static void play(GBC_Graphics *graphics) {
         GBC_Graphics_bg_move(graphics, 1, 0);
         uint8_t x = GBC_Graphics_bg_get_scroll_x(graphics);
         if (x % TILE_WIDTH == 0) {
-            uint8_t column_x = ((x / TILE_WIDTH) + SCREEN_WIDTH / TILE_WIDTH) % MAP_WIDTH;
+            uint8_t column_x = ((x / TILE_WIDTH) + GBC_Graphics_get_screen_width(graphics) / TILE_WIDTH) % MAP_WIDTH;
 
-            Mario_load_column_at_pos(graphics, s_column_to_load, column_x, (GBC_Graphics_bg_get_scroll_y(graphics) / TILE_HEIGHT));
+            Mario_load_column_at_pos(graphics, s_column_to_load, column_x);
             s_column_to_load = (s_column_to_load + 1) % (WORLD_LENGTH * 2);
         }
     }
@@ -436,28 +436,29 @@ void Mario_step(GBC_Graphics *graphics) {
             break;
         case MG_PAUSE_MENU_MOVING:
             GBC_Graphics_window_move(graphics, 0, 12);
-            if (GBC_Graphics_window_get_offset_y(graphics) == SCREEN_HEIGHT) {
+            if (GBC_Graphics_window_get_offset_y(graphics) == GBC_Graphics_get_screen_height(graphics)) {
                 s_mario_game_state = MG_PLAY;
-                GBC_Graphics_oam_set_sprite_pos(graphics, 0, s_player_x, SCREEN_HEIGHT - s_player_y + SPRITE_OFFSET_Y);
-                GBC_Graphics_oam_set_sprite_pos(graphics, 1, s_player_x+TILE_WIDTH, SCREEN_HEIGHT - s_player_y + SPRITE_OFFSET_Y);
+                GBC_Graphics_oam_set_sprite_pos(graphics, 0, s_player_x, GBC_Graphics_get_screen_height(graphics) - s_player_y + SPRITE_OFFSET_Y);
+                GBC_Graphics_oam_set_sprite_pos(graphics, 1, s_player_x+TILE_WIDTH, GBC_Graphics_get_screen_height(graphics) - s_player_y + SPRITE_OFFSET_Y);
             }
             GBC_Graphics_render(graphics);
             break;
     }
 }
 
-void Mario_load_column_at_pos(GBC_Graphics *graphics, uint16_t column, uint8_t bg_tile_x, uint8_t bg_tile_y) {
+void Mario_load_column_at_pos(GBC_Graphics *graphics, uint16_t column, uint8_t bg_tile_x) {
     // We grab the column from the world map, then draw each of the tiles from the blocks for that column
     const uint8_t *world_map_offset = &s_world_map[((column >> 1) % WORLD_LENGTH) * WORLD_HEIGHT];
     uint8_t column_modifier = column & 1;
-    for (uint8_t object_num = 0; object_num < WORLD_HEIGHT-1; object_num++) {
-        const uint8_t *object = object_array[world_map_offset[object_num+1]];
-        const uint8_t *attrs = attr_object_array[world_map_offset[object_num+1]];
+    uint8_t bg_tile_y = MAP_HEIGHT - 2;
+    for (uint8_t object_num = 0; object_num < WORLD_HEIGHT; object_num++) {
+        const uint8_t *object = object_array[world_map_offset[WORLD_HEIGHT - 1 - object_num]];
+        const uint8_t *attrs = attr_object_array[world_map_offset[WORLD_HEIGHT - 1 - object_num]];
         
-        GBC_Graphics_bg_set_tile(graphics, bg_tile_x, bg_tile_y + object_num * 2, object[column_modifier * 2 + 0]);
-        GBC_Graphics_bg_set_tile(graphics, bg_tile_x, bg_tile_y + object_num * 2 + 1, object[column_modifier * 2 + 1]);
-        GBC_Graphics_bg_set_attrs(graphics, bg_tile_x, bg_tile_y + object_num * 2, attrs[column_modifier * 2 + 0]);
-        GBC_Graphics_bg_set_attrs(graphics, bg_tile_x, bg_tile_y + object_num * 2 + 1, attrs[column_modifier * 2 + 1]);
+        GBC_Graphics_bg_set_tile(graphics, bg_tile_x, bg_tile_y - object_num * 2, object[column_modifier * 2 + 0]);
+        GBC_Graphics_bg_set_tile(graphics, bg_tile_x, bg_tile_y - object_num * 2 + 1, object[column_modifier * 2 + 1]);
+        GBC_Graphics_bg_set_attrs(graphics, bg_tile_x, bg_tile_y - object_num * 2, attrs[column_modifier * 2 + 0]);
+        GBC_Graphics_bg_set_attrs(graphics, bg_tile_x, bg_tile_y - object_num * 2 + 1, attrs[column_modifier * 2 + 1]);
     }
 }
 

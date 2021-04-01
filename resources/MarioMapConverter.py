@@ -109,8 +109,8 @@ def convert_tile_to_bytes(tile):
     return bytes(result)
 
 if __name__ == "__main__":
-    # convert_csv_to_tilemap("SourceImages/Mario/MarioWorld1-1Map.csv", "SourceImages/Mario/MarioWorldMap.bin")
-    # convert_csv_to_collision_map("SourceImages/Mario/MarioWorld1-1CollisionMap.csv", "SourceImages/Mario/MarioWorldCollisionMap.bin")
-    convert_tilesheet_to_2bpp("resources/SourceImages/Mario/MarioTilesheet~bw.png", "resources/SourceImages/Mario/MarioTilesheet~bw.bin")
-    convert_tilesheet_to_2bpp("resources/SourceImages/Mario/MarioSpritesheet~bw.png", "resources/SourceImages/Mario/MarioSpritesheet~bw.bin")
+    convert_csv_to_tilemap("resources/SourceImages/Mario/MarioWorld1-1Map.csv", "resources/SourceImages/Mario/MarioWorldMap.bin")
+    convert_csv_to_collision_map("resources/SourceImages/Mario/MarioWorld1-1CollisionMap.csv", "resources/SourceImages/Mario/MarioWorldCollisionMap.bin")
+    # convert_tilesheet_to_2bpp("resources/SourceImages/Mario/MarioTilesheet~bw.png", "resources/SourceImages/Mario/MarioTilesheet~bw.bin")
+    # convert_tilesheet_to_2bpp("resources/SourceImages/Mario/MarioSpritesheet~bw.png", "resources/SourceImages/Mario/MarioSpritesheet~bw.bin")
     

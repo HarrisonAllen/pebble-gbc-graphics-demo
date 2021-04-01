@@ -1,8 +1,5 @@
 #include "pebble-gbc-graphics.h"
 
-/** Creating a global variable allows us to pass the GBC Graphics object to the update procs */
-static GBC_Graphics *s_graphics;
-
 ///> Forward declarations for static functions
 static void bg_update_proc(Layer *layer, GContext *ctx);
 static void sprite_update_proc(Layer *layer, GContext *ctx);
@@ -17,8 +14,10 @@ GBC_Graphics *GBC_Graphics_ctor(Window *window) {
   window_set_background_color(window, GColorBlack);
   Layer *window_layer = window_get_root_layer(window);
   GRect bounds = layer_get_bounds(window_layer);
-  self->bg_layer = layer_create(bounds);
-  self->sprite_layer = layer_create(bounds);
+  self->bg_layer = layer_create_with_data(bounds, sizeof(self));
+  self->sprite_layer = layer_create_with_data(bounds, sizeof(self));
+  *(GBC_Graphics * *)layer_get_data(self->bg_layer) = self;
+  *(GBC_Graphics * *)layer_get_data(self->sprite_layer) = self;
   layer_set_update_proc(self->bg_layer, bg_update_proc);
   layer_set_update_proc(self->sprite_layer, sprite_update_proc);
   layer_add_child(window_layer, self->bg_layer);
@@ -49,7 +48,6 @@ GBC_Graphics *GBC_Graphics_ctor(Window *window) {
   self->lcdc = 0xFF; // Start LCDC with everything enable (render everything)
   self->stat = 0x00; // Start STAT empty
 
-  s_graphics = self;
   return self;
 }
 
@@ -479,7 +477,7 @@ void GBC_Graphics_render(GBC_Graphics *self) {
  * @param ctx A pointer to the graphics context
  */
 static void bg_update_proc(Layer *layer, GContext *ctx) {
-  render_bg_graphics(s_graphics, layer, ctx);
+  render_bg_graphics(*(GBC_Graphics * *)layer_get_data(layer), layer, ctx);
 }
 
 /**
@@ -489,7 +487,7 @@ static void bg_update_proc(Layer *layer, GContext *ctx) {
  * @param ctx A pointer to the graphics context
  */
 static void sprite_update_proc(Layer *layer, GContext *ctx) {
-  render_sprite_graphics(s_graphics, layer, ctx);
+  render_sprite_graphics(*(GBC_Graphics * *)layer_get_data(layer), layer, ctx);
 }
 
 void GBC_Graphics_lcdc_set(GBC_Graphics *self, uint8_t new_lcdc) {

@@ -158,7 +158,7 @@ static void update_top_bar(GBC_Graphics *graphics) {
 static void draw_pause_menu(GBC_Graphics *graphics, uint8_t cursor_pos, bool saved, bool load_failed) {
     clear_window(graphics);
     uint8_t start_x = 5;
-    uint8_t start_y = 2;
+    uint8_t start_y = 3;
     write_string_to_window(graphics, start_x, start_y + 0, 6, "CONTINUE", 0);
     write_string_to_window(graphics, start_x, start_y + 2, 6, "SAVE", 0);
     if (saved) {

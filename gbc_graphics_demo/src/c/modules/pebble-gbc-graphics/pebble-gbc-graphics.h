@@ -80,6 +80,11 @@
 #define STAT_READ_ONLY_MASK 0x0F     ///> Mask for the read only bits of STAT
 #define STAT_WRITEABLE_MASK 0xF0     ///> Mask for the writeable bits of STAT
 
+/** Predefined Screen boundaries for convenience*/
+#define SCREEN_BOUNDS_FULL GRect(0, 0, 144, 168)    ///> Fullscreen to get the most pixels
+#define SCREEN_BOUNDS_LARGE GRect(0, 4, 144, 160)   ///> Gets rid of the extra tile row on the y axis
+#define SCREEN_BOUNDS_SQUARE GRect(0, 12, 144, 144) ///> Square to get 60+ fps
+
 /** The GBC Graphics "class" struct */
 typedef struct _gbc_graphics GBC_Graphics;
 struct _gbc_graphics {

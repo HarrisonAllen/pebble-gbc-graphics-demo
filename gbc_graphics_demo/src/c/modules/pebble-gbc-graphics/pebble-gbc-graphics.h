@@ -44,7 +44,7 @@
  */
 #define OAM_SIZE 160
 #define SCREEN_WIDTH 144  ///> Width of the screen in pixels
-#define SCREEN_HEIGHT 168 ///> Height of the screen in pixels
+#define SCREEN_HEIGHT 144 ///> Height of the screen in pixels
 #define SPRITE_OFFSET_X 8 ///> The x offset to allow for offscreen rendering
 #define SPRITE_OFFSET_Y 16 ///> The y offset to allow for offscreen rendering
 
@@ -125,7 +125,7 @@ struct _gbc_graphics {
     /**
      * Background Tilemap buffer
      * This tilemap contains 32 x 32 VRAM bank locations of 1 byte each, totaling 1024 bytes
-     * The offset of the screen view (which is 144x168 pixels) is set by bg_scroll_x and bg_scroll_y
+     * The offset of the screen view (which is 144x160 pixels) is set by bg_scroll_x and bg_scroll_y
      */
     uint8_t *bg_tilemap;
     /**
@@ -192,17 +192,19 @@ struct _gbc_graphics {
     void (*vblank_interrupt_callback)(GBC_Graphics *); ///> The callback for the VBlank interrupt
     void (*line_compare_interrupt_callback)(GBC_Graphics *); ///> The callback for the line compare interrupt
     void (*oam_interrupt_callback)(GBC_Graphics *); ///> The callback for the oam interrupt
+    uint8_t screen_y_offset; ///> The offset of the screen from the top of the display
 };
 
 /**
  * Creates a GBC Graphics object
  * 
  * @param window The window in which to display the GBC Graphics object
+ * @param screen_y_offset The offset of the screen from the top of the display, 12 is recommended
  * 
  * @return a pointer to the created GBC Graphics object
  * @note I recommend creating the GBC Graphics object in window_load or an equivalent function
  */
-GBC_Graphics *GBC_Graphics_ctor(Window *window);
+GBC_Graphics *GBC_Graphics_ctor(Window *window, uint8_t screen_y_offset);
 
 /**
  * Destroys the GBC Graphics display object by freeing any memory it uses

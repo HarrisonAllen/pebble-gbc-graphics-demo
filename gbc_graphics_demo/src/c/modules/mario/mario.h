@@ -13,7 +13,7 @@
 #define MAX_JUMP_HEIGHT 64
 #define MIN_JUMP_HEIGHT 16
 #define WORLD_LENGTH 213 // Columns
-#define WORLD_HEIGHT 11 // Rows
+#define WORLD_HEIGHT 10 // Rows
 #define MD_NONE 0b0000
 #define MD_UP 0b0001
 #define MD_LEFT 0b0010

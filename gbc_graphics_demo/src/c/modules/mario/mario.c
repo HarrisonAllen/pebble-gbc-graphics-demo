@@ -158,7 +158,7 @@ static void update_top_bar(GBC_Graphics *graphics) {
 static void draw_pause_menu(GBC_Graphics *graphics, uint8_t cursor_pos, bool saved, bool load_failed) {
     clear_window(graphics);
     uint8_t start_x = 5;
-    uint8_t start_y = 5;
+    uint8_t start_y = 4;
     write_string_to_window(graphics, start_x, start_y + 0, 6, "CONTINUE", 0);
     write_string_to_window(graphics, start_x, start_y + 2, 6, "SAVE", 0);
     if (saved) {
@@ -208,7 +208,7 @@ void Mario_initialize(GBC_Graphics *graphics) {
     clear_background(graphics);
     uint16_t start_col = s_player_world_x / 8 - 2;
         for (s_column_to_load = start_col; s_column_to_load < start_col + SCREEN_WIDTH / TILE_WIDTH + 1; s_column_to_load++) {
-        Mario_load_column_at_pos(graphics, s_column_to_load, (GBC_Graphics_bg_get_scroll_x(graphics) / TILE_WIDTH) + (s_column_to_load - start_col), (GBC_Graphics_bg_get_scroll_y(graphics) / TILE_HEIGHT) - 1);
+        Mario_load_column_at_pos(graphics, s_column_to_load, (GBC_Graphics_bg_get_scroll_x(graphics) / TILE_WIDTH) + (s_column_to_load - start_col), (GBC_Graphics_bg_get_scroll_y(graphics) / TILE_HEIGHT));
     }
     update_top_bar(graphics);
     
@@ -413,7 +413,7 @@ static void play(GBC_Graphics *graphics) {
         if (x % TILE_WIDTH == 0) {
             uint8_t column_x = ((x / TILE_WIDTH) + SCREEN_WIDTH / TILE_WIDTH) % MAP_WIDTH;
 
-            Mario_load_column_at_pos(graphics, s_column_to_load, column_x, (GBC_Graphics_bg_get_scroll_y(graphics) / TILE_HEIGHT) - 1);
+            Mario_load_column_at_pos(graphics, s_column_to_load, column_x, (GBC_Graphics_bg_get_scroll_y(graphics) / TILE_HEIGHT));
             s_column_to_load = (s_column_to_load + 1) % (WORLD_LENGTH * 2);
         }
     }
@@ -450,9 +450,9 @@ void Mario_load_column_at_pos(GBC_Graphics *graphics, uint16_t column, uint8_t b
     // We grab the column from the world map, then draw each of the tiles from the blocks for that column
     const uint8_t *world_map_offset = &s_world_map[((column >> 1) % WORLD_LENGTH) * WORLD_HEIGHT];
     uint8_t column_modifier = column & 1;
-    for (uint8_t object_num = 0; object_num < WORLD_HEIGHT; object_num++) {
-        const uint8_t *object = object_array[world_map_offset[object_num]];
-        const uint8_t *attrs = attr_object_array[world_map_offset[object_num]];
+    for (uint8_t object_num = 0; object_num < WORLD_HEIGHT-1; object_num++) {
+        const uint8_t *object = object_array[world_map_offset[object_num+1]];
+        const uint8_t *attrs = attr_object_array[world_map_offset[object_num+1]];
         
         GBC_Graphics_bg_set_tile(graphics, bg_tile_x, bg_tile_y + object_num * 2, object[column_modifier * 2 + 0]);
         GBC_Graphics_bg_set_tile(graphics, bg_tile_x, bg_tile_y + object_num * 2 + 1, object[column_modifier * 2 + 1]);

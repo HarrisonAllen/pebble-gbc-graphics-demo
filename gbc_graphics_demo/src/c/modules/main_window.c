@@ -151,10 +151,6 @@ static void up_click_handler(ClickRecognizerRef recognizer, void *context) {
 }
 
 static void down_click_handler(ClickRecognizerRef recognizer, void *context) {
-  s_counter = (s_counter + 8) % 176;
-  if (!(s_counter & 1)) {
-    layer_set_bounds(s_graphics->bg_layer, GRect(0, 0, 144, s_counter));
-  }
   switch(s_demo_mode) {
     case DM_MARIO:
       Mario_handle_down_click(s_graphics);
@@ -261,8 +257,6 @@ static void frame_timer_handle(void* context) {
 static void fps_timer_handle(void *context) {
   snprintf(s_frame_buffer, 4, "%3d", s_frame_counter);
   Mario_write_string_to_background(s_graphics, 15, 0, 6, s_frame_buffer, 0);
-  snprintf(s_frame_buffer, 4, "%3d", s_counter);
-  Mario_write_string_to_background(s_graphics, 12, 0, 6, s_frame_buffer, 0);
   s_frame_counter = 0;
   GBC_Graphics_render(s_graphics);
 
@@ -359,7 +353,7 @@ static void window_load(Window *window) {
   Layer *window_layer = window_get_root_layer(window);
   GRect bounds = layer_get_bounds(window_layer);
 
-  s_graphics = GBC_Graphics_ctor(window);
+  s_graphics = GBC_Graphics_ctor(window, 12);
   load_demo(s_demo_mode);
   // print_array(s_graphics->bg_tilemap, TILEMAP_SIZE, 32);
   // print_array(s_graphics->bg_attrmap, ATTRMAP_SIZE, 32);

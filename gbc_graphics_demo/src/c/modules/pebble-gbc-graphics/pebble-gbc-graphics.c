@@ -7,21 +7,24 @@ static GBC_Graphics *s_graphics;
 static void bg_update_proc(Layer *layer, GContext *ctx);
 static void sprite_update_proc(Layer *layer, GContext *ctx);
 
-GBC_Graphics *GBC_Graphics_ctor(Window *window) { 
+GBC_Graphics *GBC_Graphics_ctor(Window *window, uint8_t screen_y_offset) { 
   GBC_Graphics *self = NULL;
   self = malloc(sizeof(GBC_Graphics));
   if (self == NULL)
       return NULL;
   
   // Initialize the bg/window and sprite layers
+  window_set_background_color(window, GColorBlack);
   Layer *window_layer = window_get_root_layer(window);
-  GRect bounds = layer_get_bounds(window_layer);
+  GRect bounds = GRect(0, screen_y_offset, SCREEN_WIDTH, SCREEN_HEIGHT);
   self->bg_layer = layer_create(bounds);
   self->sprite_layer = layer_create(bounds);
   layer_set_update_proc(self->bg_layer, bg_update_proc);
   layer_set_update_proc(self->sprite_layer, sprite_update_proc);
   layer_add_child(window_layer, self->bg_layer);
   layer_add_child(window_layer, self->sprite_layer);
+
+  self->screen_y_offset = screen_y_offset;
 
   // Allocate 4 banks of VRAM space
   self->vram = (uint8_t*)malloc(VRAM_BANK_SIZE * 4);
@@ -157,7 +160,7 @@ static void render_bg_graphics(GBC_Graphics *self, Layer *layer, GContext *ctx) 
   bool in_window_y;
 
   self->stat &= ~STAT_VBLANK_FLAG; // No longer in VBlank while we draw
-  for (self->line_y = 0; self->line_y < SCREEN_HEIGHT; self->line_y++) {
+  for (self->line_y = 0; self->line_y < bounds.size.h; self->line_y++) {
     // Check if the current line matches the line compare value, and then do the callback
     self->stat &= ~STAT_LINE_COMP_FLAG;
     self->stat |= STAT_LINE_COMP_FLAG * (self->line_y == self->line_y_compare);
@@ -219,10 +222,14 @@ static void render_bg_graphics(GBC_Graphics *self, Layer *layer, GContext *ctx) 
       // Finally, we get the corresponding color from attribute palette
       pixel_color = self->bg_palette_bank[((tile_attr & ATTR_PALETTE_MASK) << 2) + pixel]; // (tile_attr & ATTR_PALETTE_MASK) * 4
       
+      // HELLO FUTURE ME
+      // YOU BROKE EVERYTHING BY TRYING TO GET RID OF ONE ROW (168->160)
+      // GOOD LUCK DINGUS
+
       #if defined(PBL_COLOR)
-        memset(&fb_data[x + (self->line_y << 7) + (self->line_y << 4)], pixel_color, 1); // x + self->line_y * row_size
+        memset(&fb_data[x + ((self->line_y + self->screen_y_offset) << 7) + ((self->line_y + self->screen_y_offset) << 4)], pixel_color, 1); // x + self->line_y * row_size
       #else
-        uint16_t byte = (x >> 3) + (self->line_y << 4) + (self->line_y << 2); // x / 8 + self->line_y * row_size
+        uint16_t byte = (x >> 3) + ((self->line_y + self->screen_y_offset) << 4) + ((self->line_y + self->screen_y_offset) << 2); // x / 8 + self->line_y * row_size
         uint8_t bit = x & 7; // x % 8
         uint8_t *byte_mod = &fb_data[byte];
         *byte_mod ^= (-pixel_color ^ *byte_mod) & (1 << bit);
@@ -393,9 +400,9 @@ static void render_sprite_graphics(GBC_Graphics *self, Layer *layer, GContext *c
           pixel_color = self->sprite_palette_bank[((sprite[3] & ATTR_PALETTE_MASK) << 2) + pixel]; // (tile_attr & ATTR_PALETTE_MASK) * PALETTE_SIZE + pixel
           
           #if defined(PBL_COLOR)
-            memset(&fb_data[screen_x + (screen_y << 7) + (screen_y << 4)], pixel_color, 1); // x + self->line_y * row_size
+            memset(&fb_data[screen_x + ((screen_y + self->screen_y_offset) << 7) + ((screen_y + self->screen_y_offset) << 4)], pixel_color, 1); // x + self->line_y * row_size
           #else
-            uint16_t byte = (screen_x >> 3) + (screen_y << 4) + (screen_y << 2); // x / 8 + self->line_y * row_size
+            uint16_t byte = (screen_x >> 3) + ((screen_y + self->screen_y_offset) << 4) + ((screen_y + self->screen_y_offset) << 2); // x / 8 + self->line_y * row_size
             uint8_t bit = screen_x & 7; // x % 8
             uint8_t *byte_mod = &fb_data[byte];
             *byte_mod ^= (-pixel_color ^ *byte_mod) & (1 << bit);

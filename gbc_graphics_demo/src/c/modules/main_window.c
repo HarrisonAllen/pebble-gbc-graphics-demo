@@ -160,10 +160,6 @@ static void up_click_handler(ClickRecognizerRef recognizer, void *context) {
 }
 
 static void down_click_handler(ClickRecognizerRef recognizer, void *context) {
-  s_counter = (s_counter + 1) % 6;
-  GBC_Graphics_set_screen_bounds(s_graphics, GRect(0, screen_bounds[s_counter][0], 144, screen_bounds[s_counter][1]));
-  Mario_deinitialize(s_graphics);
-  Mario_initialize(s_graphics);
   switch(s_demo_mode) {
     case DM_MARIO:
       Mario_handle_down_click(s_graphics);

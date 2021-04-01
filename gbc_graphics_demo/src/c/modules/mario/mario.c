@@ -42,6 +42,7 @@ static MarioJumpState s_player_jump_state;
 static uint8_t s_max_x_speed;
 static uint8_t s_cursor_pos;
 static bool s_saved, s_load_failed, s_restart = true;
+static uint8_t frame_counter;
 
 static void handle_line_compare(GBC_Graphics *graphics) {
     if (GBC_Graphics_stat_get_line_y_compare(graphics) == 0) {
@@ -96,7 +97,7 @@ static uint8_t convert_char_to_vram_index(char to_convert) {
     }
 }
 
-static void write_string_to_background(GBC_Graphics *graphics, uint8_t bg_tile_x, uint8_t bg_tile_y, uint8_t attrs, char *string, uint8_t num_to_write) {
+void Mario_write_string_to_background(GBC_Graphics *graphics, uint8_t bg_tile_x, uint8_t bg_tile_y, uint8_t attrs, char *string, uint8_t num_to_write) {
     char char_to_write;
     uint8_t vram_pos;
     if (num_to_write == 0) {
@@ -143,12 +144,13 @@ static void update_top_bar(GBC_Graphics *graphics) {
         char time_buffer[9] = {0};
         clock_copy_time_string(time_buffer, 9);
         clear_text_buffer(s_text_buffer);
-        snprintf(s_text_buffer, sizeof(s_text_buffer), "  %9s %3d%%   ", time_buffer, battery_state_service_peek().charge_percent);
-        write_string_to_background(graphics, 0, 0, 0 | ATTR_PRIORITY_FLAG, s_text_buffer, 0);
+        snprintf(s_text_buffer, sizeof(s_text_buffer), " %9s %3d%%", time_buffer, battery_state_service_peek().charge_percent);
+        Mario_write_string_to_background(graphics, 0, 0, 0 | ATTR_PRIORITY_FLAG, s_text_buffer, 0);
     } else {
         clear_text_buffer(s_text_buffer);
-        snprintf(s_text_buffer, sizeof(s_text_buffer), " %5d  x%02d o%03d", s_player_score, s_player_coins, s_time);
-        write_string_to_background(graphics, 0, 0, 0 | ATTR_PRIORITY_FLAG, s_text_buffer, 0);
+        // snprintf(s_text_buffer, sizeof(s_text_buffer), " %5d x%02d o%03d", s_player_score, s_player_coins, s_time);
+        snprintf(s_text_buffer, sizeof(s_text_buffer), " %5d x%02d", s_player_score, s_player_coins);
+        Mario_write_string_to_background(graphics, 0, 0, 0 | ATTR_PRIORITY_FLAG, s_text_buffer, 0);
         GBC_Graphics_bg_set_tile_and_attrs(graphics, 7, 0, convert_char_to_vram_index('$'), 1 | ATTR_PRIORITY_FLAG);
     }
 }
@@ -211,7 +213,7 @@ void Mario_initialize(GBC_Graphics *graphics) {
     update_top_bar(graphics);
     
     clear_window(graphics);
-    GBC_Graphics_window_set_offset_pos(graphics, 0, 168);
+    GBC_Graphics_window_set_offset_pos(graphics, 0, SCREEN_HEIGHT);
     draw_pause_menu(graphics, s_cursor_pos, s_saved, s_load_failed);
 
     GBC_Graphics_stat_set_line_compare_interrupt_enabled(graphics, true);
@@ -486,7 +488,6 @@ static void save(GBC_Graphics *graphics) {
         .player_y = s_player_y,
         .time_remaining = s_time,
     };
-    uint32_t key = 0;
     persist_write_data(MARIO_SAVE_KEY, &data, sizeof(MarioSaveData));
     s_saved = true;
     draw_pause_menu(graphics, s_cursor_pos, s_saved, s_load_failed);

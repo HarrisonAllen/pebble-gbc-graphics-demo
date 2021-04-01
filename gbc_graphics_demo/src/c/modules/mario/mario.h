@@ -48,6 +48,7 @@ typedef struct {
     uint8_t player_y;
 } MarioSaveData;
 
+void Mario_write_string_to_background(GBC_Graphics *graphics, uint8_t bg_tile_x, uint8_t bg_tile_y, uint8_t attrs, char *string, uint8_t num_to_write);
 void Mario_initialize(GBC_Graphics *graphics);
 void Mario_deinitialize(GBC_Graphics *graphics);
 void Mario_step(GBC_Graphics *graphics);

@@ -153,13 +153,11 @@ static void render_bg_graphics(GBC_Graphics *self, Layer *layer, GContext *ctx) 
   uint8_t shift;
   uint8_t x;
   bool extract_pixel;
-  uint16_t byte;
-  uint8_t bit;
-  uint8_t *byte_mod;
   bool flip;
+  bool in_window_y;
 
   self->stat &= ~STAT_VBLANK_FLAG; // No longer in VBlank while we draw
-  for (self->line_y = 0; self->line_y < bounds.size.h; self->line_y++) {
+  for (self->line_y = 0; self->line_y < SCREEN_HEIGHT; self->line_y++) {
     // Check if the current line matches the line compare value, and then do the callback
     self->stat &= ~STAT_LINE_COMP_FLAG;
     self->stat |= STAT_LINE_COMP_FLAG * (self->line_y == self->line_y_compare);
@@ -167,10 +165,12 @@ static void render_bg_graphics(GBC_Graphics *self, Layer *layer, GContext *ctx) 
       self->line_compare_interrupt_callback(self);
     }
 
+    in_window_y = self->line_y >= window_offset_y;
+
     self->stat &= ~STAT_HBLANK_FLAG; // No longer in HBlank while we draw the line
-    for(x = 0; x < bounds.size.w; x++) {
+    for(x = bounds.origin.x; x < bounds.size.w; x++) {
       // Decide what pixel to draw, first check if we're in the window bounds
-      if (self->line_y >= window_offset_y && x >= window_offset_x) {
+      if (in_window_y && x >= window_offset_x) {
         map_x = x - self->window_offset_x;
         map_y = self->line_y - self->window_offset_y;
         tilemap = self->window_tilemap;
@@ -192,7 +192,7 @@ static void render_bg_graphics(GBC_Graphics *self, Layer *layer, GContext *ctx) 
       
       // Get the tile from vram
       offset = tile_num << 4; // tile_num * TILE_SIZE
-      tile = self->vram + (((uint16_t)((tile_attr & ATTR_VRAM_BANK_MASK) >> 3)) << 12) + offset; // self->vram + vram_bank_number * VRAM_BANK_SIZE + offset
+      tile = self->vram + ((((tile_attr & ATTR_VRAM_BANK_MASK) >> 3)) << 12) + offset; // self->vram + vram_bank_number * VRAM_BANK_SIZE + offset
 
       // Next, we extract and return the 2bpp pixel from the tile
       pixel_x = map_x & 7; // map_x % TILE_WIDTH
@@ -222,9 +222,9 @@ static void render_bg_graphics(GBC_Graphics *self, Layer *layer, GContext *ctx) 
       #if defined(PBL_COLOR)
         memset(&fb_data[x + (self->line_y << 7) + (self->line_y << 4)], pixel_color, 1); // x + self->line_y * row_size
       #else
-        byte = (x >> 3) + (self->line_y << 4) + (self->line_y << 2); // x / 8 + self->line_y * row_size
-        bit = x & 7; // x % 8
-        byte_mod = &fb_data[byte];
+        uint16_t byte = (x >> 3) + (self->line_y << 4) + (self->line_y << 2); // x / 8 + self->line_y * row_size
+        uint8_t bit = x & 7; // x % 8
+        uint8_t *byte_mod = &fb_data[byte];
         *byte_mod ^= (-pixel_color ^ *byte_mod) & (1 << bit);
       #endif
     }
@@ -269,9 +269,6 @@ static void render_sprite_graphics(GBC_Graphics *self, Layer *layer, GContext *c
   uint16_t offset;
   uint8_t pixel_x, pixel_y, pixel, pixel_byte, pixel_color;
   uint8_t shift;
-  uint16_t byte;
-  uint8_t bit;
-  uint8_t *byte_mod;
   bool flip;
 
   self->stat &= ~STAT_OAM_FLAG; // Drawing sprites, clear OAM flag
@@ -297,18 +294,24 @@ static void render_sprite_graphics(GBC_Graphics *self, Layer *layer, GContext *c
 
       // Get the tile from vram
       offset = tile_number << 4; // tile_num * TILE_SIZE
-      tile = self->vram + (((uint16_t)((sprite[3] & ATTR_VRAM_BANK_MASK) >> 3)) << 12) + offset; // self->vram + vram_bank_number * VRAM_BANK_SIZE + offset
+      tile = self->vram + ((((sprite[3] & ATTR_VRAM_BANK_MASK) >> 3)) << 12) + offset; // self->vram + vram_bank_number * VRAM_BANK_SIZE + offset
 
       // Then we draw the tile row by row
       for (tile_y = 0; tile_y < TILE_HEIGHT; tile_y++) {
         screen_y = sprite[1] + tile_y - SPRITE_OFFSET_Y + TILE_HEIGHT * tile_num; // On second tile, offset by TILE_HEIGHT
-        if (screen_y < 0 || screen_y >= SCREEN_HEIGHT) {
+        if (screen_y >= SCREEN_HEIGHT) {
+          break;
+        }
+        if (screen_y < 0) {
           continue;
         }
         for (tile_x = 0; tile_x < TILE_WIDTH; tile_x++) {
           // Check if the pixel is on the screen
           screen_x = sprite[0] + tile_x - SPRITE_OFFSET_X;
-          if (screen_x < 0 || screen_x >= SCREEN_WIDTH) {
+          if (screen_x >= SCREEN_WIDTH) {
+            break;
+          }
+          if (screen_x < 0) {
             continue;
           }
 
@@ -330,7 +333,7 @@ static void render_sprite_graphics(GBC_Graphics *self, Layer *layer, GContext *c
             
             // Get the tile from vram
             offset = bg_tile_num << 4; // tile_num * TILE_SIZE
-            bg_tile = self->vram + (((uint16_t)((bg_tile_attr & ATTR_VRAM_BANK_MASK) >> 3)) << 12) + offset; // self->vram + vram_bank_number * VRAM_BANK_SIZE + offset
+            bg_tile = self->vram + ((((bg_tile_attr & ATTR_VRAM_BANK_MASK) >> 3)) << 12) + offset; // self->vram + vram_bank_number * VRAM_BANK_SIZE + offset
             
             // Next, we extract and return the 2bpp pixel from the tile
             pixel_x = map_x & 7; // map_x % TILE_WIDTH
@@ -392,9 +395,9 @@ static void render_sprite_graphics(GBC_Graphics *self, Layer *layer, GContext *c
           #if defined(PBL_COLOR)
             memset(&fb_data[screen_x + (screen_y << 7) + (screen_y << 4)], pixel_color, 1); // x + self->line_y * row_size
           #else
-            byte = (screen_x >> 3) + (screen_y << 4) + (screen_y << 2); // x / 8 + self->line_y * row_size
-            bit = screen_x & 7; // x % 8
-            byte_mod = &fb_data[byte];
+            uint16_t byte = (screen_x >> 3) + (screen_y << 4) + (screen_y << 2); // x / 8 + self->line_y * row_size
+            uint8_t bit = screen_x & 7; // x % 8
+            uint8_t *byte_mod = &fb_data[byte];
             *byte_mod ^= (-pixel_color ^ *byte_mod) & (1 << bit);
           #endif
         }

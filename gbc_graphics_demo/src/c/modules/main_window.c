@@ -13,7 +13,10 @@ static uint16_t s_last_frame_time;
 static uint16_t s_frame_times[50];
 static uint8_t s_frame_index;
 static bool s_frame_counter_enabled = true;
-static AppTimer *s_frame_timer;
+static AppTimer *s_frame_timer, *s_fps_timer;
+static uint16_t s_frame_counter;
+char s_frame_buffer[5] = {0};
+static uint8_t s_counter;
 
 typedef enum {
   DM_START,
@@ -148,6 +151,10 @@ static void up_click_handler(ClickRecognizerRef recognizer, void *context) {
 }
 
 static void down_click_handler(ClickRecognizerRef recognizer, void *context) {
+  s_counter = (s_counter + 8) % 176;
+  if (!(s_counter & 1)) {
+    layer_set_bounds(s_graphics->bg_layer, GRect(0, 0, 144, s_counter));
+  }
   switch(s_demo_mode) {
     case DM_MARIO:
       Mario_handle_down_click(s_graphics);
@@ -196,9 +203,9 @@ static void click_config_provider(void *context) {
   window_raw_click_subscribe(BUTTON_ID_UP, up_press_handler, up_release_handler, NULL);
   window_raw_click_subscribe(BUTTON_ID_DOWN, down_press_handler, down_release_handler, NULL);
 
-  window_single_repeating_click_subscribe(BUTTON_ID_SELECT, 30, select_click_handler);
-  window_single_repeating_click_subscribe(BUTTON_ID_DOWN, 30, down_click_handler);
-  window_single_repeating_click_subscribe(BUTTON_ID_UP, 30, up_click_handler);
+  // window_single_repeating_click_subscribe(BUTTON_ID_SELECT, 30, select_click_handler);
+  // window_single_repeating_click_subscribe(BUTTON_ID_DOWN, 30, down_click_handler);
+  // window_single_repeating_click_subscribe(BUTTON_ID_UP, 30, up_click_handler);
 }
 
 static void nudge_bg() {
@@ -246,7 +253,20 @@ static void frame_timer_handle(void* context) {
       break;
   }
 
+  s_frame_counter++;
+
   s_frame_timer = app_timer_register(FRAME_DURATION, frame_timer_handle, NULL);
+}
+
+static void fps_timer_handle(void *context) {
+  snprintf(s_frame_buffer, 4, "%3d", s_frame_counter);
+  Mario_write_string_to_background(s_graphics, 15, 0, 6, s_frame_buffer, 0);
+  snprintf(s_frame_buffer, 4, "%3d", s_counter);
+  Mario_write_string_to_background(s_graphics, 12, 0, 6, s_frame_buffer, 0);
+  s_frame_counter = 0;
+  GBC_Graphics_render(s_graphics);
+
+  s_fps_timer = app_timer_register(FPS_TIMER_DELAY, fps_timer_handle, NULL);
 }
 
 static void will_focus_handler(bool in_focus) {
@@ -345,13 +365,15 @@ static void window_load(Window *window) {
   // print_array(s_graphics->bg_attrmap, ATTRMAP_SIZE, 32);
   // print_array(s_graphics->vram, TILE_SIZE * 64, TILE_SIZE);
   // initialize_test_pattern();
-  s_fps_counter_layer = layer_create(bounds);
-  layer_set_update_proc(s_fps_counter_layer, fps_counter_update_proc);
+  // s_fps_counter_layer = layer_create(bounds);
+  // layer_set_update_proc(s_fps_counter_layer, fps_counter_update_proc);
 
   // Add to Window
-  layer_add_child(window_get_root_layer(window), s_fps_counter_layer);
+  // layer_add_child(window_get_root_layer(window), s_fps_counter_layer);
   
   s_frame_timer = app_timer_register(FRAME_DURATION, frame_timer_handle, NULL);
+  s_fps_timer = app_timer_register(FPS_TIMER_DELAY, fps_timer_handle, NULL);
+
   // layer_mark_dirty(s_foreground_layer);
   // layer_mark_dirty(s_player_ui_layer);
 }
@@ -361,7 +383,7 @@ static void window_unload(Window *window) {
 
   unload_demo(s_demo_mode);
 
-  layer_destroy(s_fps_counter_layer);
+  // layer_destroy(s_fps_counter_layer);
 
   window_destroy(s_window);
 }

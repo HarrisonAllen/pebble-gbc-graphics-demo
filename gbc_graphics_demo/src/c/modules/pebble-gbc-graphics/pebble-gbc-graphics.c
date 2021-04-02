@@ -24,10 +24,10 @@ GBC_Graphics *GBC_Graphics_ctor(Window *window) {
   layer_add_child(window_layer, self->sprite_layer);
 
   // Set the screen boundaries to the size of the Pebble display
-  self->screen_x_origin = 0;
-  self->screen_y_origin = 0;
-  self->screen_width = 144;
-  self->screen_height = 168;
+  self->screen_x_origin = bounds.origin.x;
+  self->screen_y_origin = bounds.origin.y;
+  self->screen_width = bounds.size.w;
+  self->screen_height = bounds.size.h;
 
   // Allocate 4 banks of VRAM space
   self->vram = (uint8_t*)malloc(VRAM_BANK_SIZE * 4);

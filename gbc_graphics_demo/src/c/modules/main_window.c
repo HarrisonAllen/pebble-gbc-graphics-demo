@@ -265,7 +265,7 @@ static void frame_timer_handle(void* context) {
 
 static void fps_timer_handle(void *context) {
   snprintf(s_frame_buffer, 4, "%3d", s_frame_counter);
-  Mario_write_string_to_background(s_graphics, 15, 0, 6, s_frame_buffer, 0);
+  Mario_write_string_to_background(s_graphics, 12, 0, 6, s_frame_buffer, 0);
   s_frame_counter = 0;
   GBC_Graphics_render(s_graphics);
 

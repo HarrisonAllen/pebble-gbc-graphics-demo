@@ -148,8 +148,11 @@ static void update_top_bar(GBC_Graphics *graphics) {
         Mario_write_string_to_background(graphics, 0, 0, 0 | ATTR_PRIORITY_FLAG, s_text_buffer, 0);
     } else {
         clear_text_buffer(s_text_buffer);
+    #if defined(PBL_ROUND)
+        snprintf(s_text_buffer, sizeof(s_text_buffer), " %5d x%02d", s_player_score, s_player_coins);
+    #else
         snprintf(s_text_buffer, sizeof(s_text_buffer), " %5d x%02d o%03d", s_player_score, s_player_coins, s_time);
-        // snprintf(s_text_buffer, sizeof(s_text_buffer), " %5d x%02d", s_player_score, s_player_coins);
+    #endif
         Mario_write_string_to_background(graphics, 0, 0, 0 | ATTR_PRIORITY_FLAG, s_text_buffer, 0);
         GBC_Graphics_bg_set_tile_and_attrs(graphics, 7, 0, convert_char_to_vram_index('$'), 1 | ATTR_PRIORITY_FLAG);
     }
@@ -191,7 +194,7 @@ void Mario_initialize(GBC_Graphics *graphics) {
         s_player_y = 32 - 1;
     }
 
-    GBC_Graphics_set_screen_bounds(graphics, SCREEN_BOUNDS_SQUARE);
+    GBC_Graphics_set_screen_bounds(graphics, SCREEN_BOUNDS_LARGE);
 
     ResHandle handle = resource_get_handle(RESOURCE_ID_DATA_MARIO_WORLD_MAP);
     size_t res_size = resource_size(handle);

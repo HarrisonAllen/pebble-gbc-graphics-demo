@@ -377,7 +377,7 @@ static void render_sprite_graphics(GBC_Graphics *self, Layer *layer, GContext *c
           }
 
           // Get the tile x and y on the bg map
-          map_x = self->bg_scroll_x + screen_x;
+          map_x = self->bg_scroll_x + screen_x - self->screen_x_origin;
           map_y = self->bg_scroll_y + screen_y;
           map_tile_x = map_x >> 3; // map_x / TILE_WIDTH
           map_tile_y = map_y >> 3; // map_y / TILE_HEIGHT

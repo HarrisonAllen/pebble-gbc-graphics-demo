@@ -190,9 +190,7 @@ static void render_bg_graphics(GBC_Graphics *self, Layer *layer, GContext *ctx) 
     return;
   }
   GBitmap *fb = graphics_capture_frame_buffer(ctx);
-  uint8_t *fb_data = gbitmap_get_data(fb);
 
-  GRect bounds = layer_get_bounds(layer);
   uint8_t window_offset_y = clamp_short_to_uint8_t(self->window_offset_y, 0, self->screen_height);
   uint8_t window_offset_x = clamp_short_to_uint8_t(self->window_offset_x, 0, self->screen_width);
 
@@ -203,8 +201,7 @@ static void render_bg_graphics(GBC_Graphics *self, Layer *layer, GContext *ctx) 
   uint8_t *tile;
   uint8_t pixel_x, pixel_y, pixel_byte, pixel_color, pixel;
   uint8_t shift;
-  uint8_t x; 
-  bool extract_pixel;
+  uint8_t x;
   uint8_t flip;
   bool in_window_y;
 
@@ -314,7 +311,6 @@ static void render_sprite_graphics(GBC_Graphics *self, Layer *layer, GContext *c
     return;
   }
   GBitmap *fb = graphics_capture_frame_buffer(ctx);
-  uint8_t *fb_data = gbitmap_get_data(fb);
 
   // Predefine the variables we're going to use
   short screen_x, screen_y;
@@ -383,8 +379,8 @@ static void render_sprite_graphics(GBC_Graphics *self, Layer *layer, GContext *c
           map_tile_y = map_y >> 3; // map_y / TILE_HEIGHT
 
           // Check if the background pixel has priority
-          // TODO: I don't think this actually works
-          bg_tile_attr = self->bg_attrmap[map_tile_x + ((map_tile_y - (self->screen_y_origin >> 3)) << 5)];
+          // TODO: This may work, but need to do some tests
+          bg_tile_attr = self->bg_attrmap[map_tile_x + (map_tile_y << 5)];
           if (bg_tile_attr & ATTR_PRIORITY_FLAG) {
             continue;
           }

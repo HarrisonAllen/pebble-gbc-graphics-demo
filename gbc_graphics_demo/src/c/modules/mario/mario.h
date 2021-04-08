@@ -21,6 +21,11 @@
 #define MD_RIGHT 0b1000
 #define NUM_MENU_ITEMS 6
 #define MARIO_SAVE_KEY 0
+#if defined(PBL_PLATFORM_DIORITE)
+    #define MARIO_FRAME_SKIP 4
+#else
+    #define MARIO_FRAME_SKIP 1
+#endif
 
 typedef enum {
     MG_PLAY,

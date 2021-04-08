@@ -1,7 +1,12 @@
 #include "pokemon.h"
-#include "objects.h"
-#include "object_attrs.h"
-#include "screen.h"
+#include "world.h"
+#include "sprites.h"
+
+#if defined(PBL_COLOR)
+#define FPS_DELAY 1
+#else
+#define FPS_DELAY 8
+#endif
 
 typedef enum {
   D_UP,
@@ -19,11 +24,13 @@ static Dir s_player_direction;
 static PlayerMode s_player_mode;
 static uint8_t s_walk_frame, s_poll_frame;
 static bool s_select_pressed, s_flip_walk;
-static uint8_t s_player_x, s_player_y;
-static uint8_t s_target_x, s_target_y;
-static bool s_switch_character = true;
-static const uint8_t *s_player_sprites;
+static uint16_t s_target_x, s_target_y;
 static bool s_can_move;
+static uint8_t *s_world_map;
+static uint16_t s_player_x, s_player_y;
+static uint8_t s_player_sprite_x, s_player_sprite_y;
+static Layer *s_background_layer;
+static const uint8_t *s_player_palette;
 
 
 static GPoint direction_to_point(Dir dir) {
@@ -34,14 +41,6 @@ static GPoint direction_to_point(Dir dir) {
         case D_RIGHT:  return GPoint(1, 0);
         default: return GPoint(0, 0);
     }
-}
-
-static uint8_t interp_int(uint8_t start, uint8_t end, uint8_t time, uint8_t time_max) {
-    return start + (end - start) * (((float)time) / (float)time_max);
-}
-
-PokemonSquareInfo get_square_info(GBC_Graphics *graphics, uint8_t x, uint8_t y) {
-  return screen_info[x / (TILE_WIDTH * 2) + y / (TILE_WIDTH * 2) * (GBC_Graphics_get_screen_width(graphics) / (TILE_WIDTH * 2))];
 }
 
 /*
@@ -103,83 +102,101 @@ PokemonSquareInfo get_square_info(GBC_Graphics *graphics, uint8_t x, uint8_t y) 
  */
 
 /*
- * TODO: Change the graphics to scrolling
- * Still fence the player in, but keep the player in the center, like in the game
- */
-
-/*
- * TODO: Load in the tilemap from memory rather than having it stored in ram
- */
-
-/*
  * TODO: Add some animated tiles
  */
 
-void Pokemon_initialize(GBC_Graphics *graphics) {
-    s_player_direction = D_DOWN;
-    s_player_mode = P_STAND;
-    s_walk_frame = 0;
-    s_poll_frame = 0;
-    s_player_x = 16 * 4 + 8;
-    s_player_y = 16 * 5 + 8;
-    s_player_sprites = s_switch_character ? kris_sprites : chris_sprites;
+static uint8_t get_tile_id_from_map(uint8_t *map, uint16_t tile_x, uint16_t tile_y) {
+  uint8_t chunk = map[(tile_x >> 2) + (tile_y >> 2) * POKEMON_MAP_CHUNK_WIDTH];
+  uint8_t block = pokemon_chunks[chunk][((tile_x >> 1) & 1) + ((tile_y >> 1) & 1) * 2];
+  return pokemon_blocks[block][(tile_x & 1) + (tile_y & 1) * 2];
+}
 
-    // Load the sprites and tiles into separate banks, just to show it being done
-    GBC_Graphics_load_from_tilesheet_into_vram(graphics, RESOURCE_ID_DATA_POKEMON_TILESHEET, 49, 14, 0, 1);
-    GBC_Graphics_load_from_tilesheet_into_vram(graphics, RESOURCE_ID_DATA_POKEMON_TILESHEET, 0, 49, 0, 2);
-    GBC_Graphics_lcdc_set_window_layer_enabled(graphics, false);
-    GBC_Graphics_lcdc_set_8x16_sprite_mode_enabled(graphics, false);
-    for (uint8_t i = 0; i < 40; i++) {
-        GBC_Graphics_oam_hide_sprite(graphics, i);
+static void load_tiles(GBC_Graphics *graphics, uint8_t bg_root_x, uint8_t bg_root_y, uint16_t tile_root_x, uint16_t tile_root_y, uint8_t num_x_tiles, uint8_t num_y_tiles) {
+  for (uint16_t tile_y = tile_root_y; tile_y < tile_root_y + num_y_tiles; tile_y++) {
+    for (uint16_t tile_x = tile_root_x; tile_x < tile_root_x + num_x_tiles; tile_x++) {
+      uint8_t tile = get_tile_id_from_map(s_world_map, tile_x, tile_y);
+      GBC_Graphics_bg_set_tile_and_attrs(graphics, bg_root_x + (tile_x - tile_root_x), bg_root_y + (tile_y - tile_root_y), tile, pokemon_tile_palettes[tile]);
     }
+  }
+}
 
-    GBC_Graphics_bg_set_scroll_pos(graphics, 0, 8);
-    const uint8_t *object;
-    const uint8_t *attrs;
-    for (uint8_t y = 0; y < 11; y++) {
-      for (uint8_t x = 0; x < 9; x++) {
-        object = Pokemon_object_array[screen[x + y * 9]];
-        attrs = Pokemon_attr_object_array[screen[x + y * 9]];
+static void load_screen(GBC_Graphics *graphics) {
+  uint8_t bg_root_x = GBC_Graphics_bg_get_scroll_x(graphics) >> 3;
+  uint8_t bg_root_y = GBC_Graphics_bg_get_scroll_y(graphics) >> 3;
+  uint16_t tile_root_x = (s_player_x >> 3) - 8;
+  uint16_t tile_root_y = (s_player_y >> 3) - 8;
+  load_tiles(graphics, bg_root_x & 31, bg_root_y & 31, tile_root_x, tile_root_y, 18, 18);
+}
 
-        GBC_Graphics_bg_set_tile_and_attrs(graphics, x * 2, y * 2, object[0], attrs[0]);
-        GBC_Graphics_bg_set_tile_and_attrs(graphics, x * 2 + 1, y * 2, object[1], attrs[1]);
-        GBC_Graphics_bg_set_tile_and_attrs(graphics, x * 2, y * 2 + 1, object[2], attrs[2]);
-        GBC_Graphics_bg_set_tile_and_attrs(graphics, x * 2 + 1, y * 2 + 1, object[3], attrs[3]);
+static void background_update_proc(Layer *layer, GContext *ctx) {
+  GRect bounds = layer_get_bounds(layer);
+  graphics_context_set_stroke_width(ctx, 1);
+  graphics_context_set_antialiased(ctx, false);
+
+  GRect rect_bounds = GRect(bounds.origin.x, bounds.origin.y, bounds.size.w, bounds.size.h/2);
+  graphics_context_set_stroke_color(ctx, GColorRed);
+  graphics_context_set_fill_color(ctx, GColorRed);
+  graphics_fill_rect(ctx, rect_bounds, 0, GCornerNone);
+
+  #if defined(PBL_BW)
+    // Do some basic dithering
+    GBitmap *fb = graphics_capture_frame_buffer(ctx);
+    for (uint8_t y = 0; y < bounds.size.h/2; y++) {
+      GBitmapDataRowInfo info = gbitmap_get_data_row_info(fb, y);
+      for (uint8_t x = 0; x < bounds.size.w; x++) {
+        uint8_t pixel_color = ((x + (y & 1)) & 1);
+        uint16_t byte = (x >> 3); // x / 8
+        uint8_t bit = x & 7; // x % 8
+        uint8_t *byte_mod = &info.data[byte];
+        *byte_mod ^= (-pixel_color ^ *byte_mod) & (1 << bit);
       }
     }
-    GBC_Graphics_set_bg_palette(graphics, 0, 0b11111111, 0b11101010, 0b11010101, 0b11000000);
-    GBC_Graphics_set_bg_palette(graphics, 2, 0b11101101, 0b11011000, 0b11000100, 0b11000000);
-    GBC_Graphics_set_bg_palette(graphics, 5, 0b11111111, 0b11111001, 0b11100100, 0b11000000);
+    graphics_release_frame_buffer(ctx, fb);
+  #endif
 
-    // Create grass effect sprites
-    GBC_Graphics_oam_set_sprite(graphics, 0, 0, 0, SPRITELET_GRASS, GBC_Graphics_attr_make(6, 2, false, false, false));
-    GBC_Graphics_oam_set_sprite(graphics, 1, 0, 0, SPRITELET_GRASS, GBC_Graphics_attr_make(6, 2, true, false, false));
-    GBC_Graphics_set_sprite_palette(graphics, 6, 0b11101101, 0b11011000, 0b11000100, 0b11000000);
+  rect_bounds = GRect(bounds.origin.x, bounds.origin.y + bounds.size.h/2, bounds.size.w, bounds.size.h/2);
+  graphics_context_set_stroke_color(ctx, GColorWhite);
+  graphics_context_set_fill_color(ctx, GColorWhite);
+  graphics_fill_rect(ctx, rect_bounds, 0, GCornerNone);
 
-    // Crate player sprites
-    uint8_t base_sprite = s_player_sprites[2];
-    uint8_t base_palette = s_switch_character ? 1 : 0;
-    GBC_Graphics_oam_set_sprite(graphics, 2, s_player_x, s_player_y - 4, base_sprite, GBC_Graphics_attr_make(base_palette, 2, false, false, false));
-    GBC_Graphics_oam_set_sprite(graphics, 3, s_player_x + TILE_WIDTH, s_player_y - 4, base_sprite+1, GBC_Graphics_attr_make(base_palette, 2, false, false, false));
-    GBC_Graphics_oam_set_sprite(graphics, 4, s_player_x, s_player_y + TILE_HEIGHT - 4, base_sprite+2, GBC_Graphics_attr_make(base_palette, 2, false, false, false));
-    GBC_Graphics_oam_set_sprite(graphics, 5, s_player_x + TILE_WIDTH, s_player_y + TILE_HEIGHT - 4, base_sprite+3, GBC_Graphics_attr_make(base_palette, 2, false, false, false));
-    GBC_Graphics_set_sprite_palette(graphics, 0, 0b11111111, 0b11111001, 0b11110100, 0b11000000);
-    GBC_Graphics_set_sprite_palette(graphics, 1, 0b11111111, 0b11111001, 0b11011011, 0b11000000);
+  rect_bounds = GRect(bounds.origin.x, bounds.origin.y + bounds.size.h/2 - 3, bounds.size.w, 6);
+  graphics_context_set_stroke_color(ctx, GColorBlack);
+  graphics_context_set_fill_color(ctx, GColorBlack);
+  graphics_fill_rect(ctx, rect_bounds, 0, GCornerNone);
 
-    GBC_Graphics_lcdc_set_sprite_layer_enabled(graphics, true);
-    GBC_Graphics_render(graphics);
+  rect_bounds = SCREEN_BOUNDS_SQUARE;
+  rect_bounds = GRect(rect_bounds.origin.x - 3, rect_bounds.origin.y - 3, rect_bounds.size.w + 6, rect_bounds.size.h + 6);
+  graphics_context_set_stroke_color(ctx, GColorBlack);
+  graphics_draw_rect(ctx, rect_bounds);
+  
+  rect_bounds = SCREEN_BOUNDS_SQUARE;
+  rect_bounds = GRect(rect_bounds.origin.x - 2, rect_bounds.origin.y - 2, rect_bounds.size.w + 4, rect_bounds.size.h + 4);
+  graphics_context_set_stroke_color(ctx, GColorWhite);
+  graphics_draw_rect(ctx, rect_bounds);
+
+  rect_bounds = SCREEN_BOUNDS_SQUARE;
+  rect_bounds = GRect(rect_bounds.origin.x - 1, rect_bounds.origin.y - 1, rect_bounds.size.w + 2, rect_bounds.size.h + 2);
+  graphics_context_set_stroke_color(ctx, GColorBlack);
+  graphics_draw_rect(ctx, rect_bounds);
 }
 
-void Pokemon_deinitialize(GBC_Graphics *graphics) {
-  return;
+static void load_player_sprites(GBC_Graphics *graphics) {
+  uint8_t sprites_to_use = rand() % 8;
+  uint8_t palette_to_use = rand() % 6;
+
+  s_player_palette = pokemon_trainer_sprite_palettes[palette_to_use];
+  GBC_Graphics_set_sprite_palette(graphics, 0, s_player_palette[0], s_player_palette[1], s_player_palette[2], s_player_palette[3]);
+
+  uint16_t spritesheet_offset = pokemon_trainer_sheet_offsets[sprites_to_use] * POKEMON_TILES_PER_SPRITE;
+  GBC_Graphics_load_from_tilesheet_into_vram(graphics, RESOURCE_ID_DATA_POKEMON_SPRITESHEET,
+    spritesheet_offset, POKEMON_TILES_PER_SPRITE * POKEMON_SPRITES_PER_TRAINER, 1, 3); // offset 1 for grass
 }
 
-// Yeah yeah I could make this work for more sprites (e.g. npcs) but this is a demo
 static void set_player_sprites(GBC_Graphics *graphics, bool walk_sprite, bool x_flip) {
-  const uint8_t new_tile = (s_switch_character ? kris_sprites : chris_sprites)[s_player_direction + walk_sprite * 4];
+  uint8_t new_tile = pokemon_trainer_sprite_offsets[s_player_direction + walk_sprite * 4];
   for (uint8_t i = 0; i < 4; i++) {
-    GBC_Graphics_oam_set_sprite_tile(graphics, 2+i, new_tile+i);
-    GBC_Graphics_oam_set_sprite_x_flip(graphics, 2+i, x_flip);
+    GBC_Graphics_oam_set_sprite_tile(graphics, 2 + i, (new_tile * POKEMON_TILES_PER_SPRITE) + i + 1);
+    GBC_Graphics_oam_set_sprite_x_flip(graphics, 2 + i, x_flip);
   }
 
   if (x_flip) {
@@ -188,10 +205,129 @@ static void set_player_sprites(GBC_Graphics *graphics, bool walk_sprite, bool x_
   }
 }
 
-static void move_player_sprites(GBC_Graphics *graphics, short dx, short dy) {
-  for (uint8_t i = 0; i < 4; i++) {
-    GBC_Graphics_oam_move_sprite(graphics, 2+i, dx, dy);
+void Pokemon_initialize(GBC_Graphics *graphics, Layer *background_layer) {
+  layer_set_update_proc(background_layer, background_update_proc);
+  s_background_layer = background_layer;
+
+  s_player_direction = D_DOWN;
+  s_player_mode = P_STAND;
+  s_walk_frame = 0;
+  s_poll_frame = 0;
+  s_player_sprite_x = 16 * 4 + 8;
+  s_player_sprite_y = 16 * 4;
+
+  GBC_Graphics_set_screen_bounds(graphics, SCREEN_BOUNDS_SQUARE);
+  GBC_Graphics_window_set_offset_pos(graphics, 0, 168);
+  GBC_Graphics_lcdc_set_8x16_sprite_mode_enabled(graphics, false);
+  for (uint8_t i = 0; i < 40; i++) {
+      GBC_Graphics_oam_hide_sprite(graphics, i);
   }
+
+  GBC_Graphics_load_from_tilesheet_into_vram(graphics, RESOURCE_ID_DATA_POKEMON_TILESHEET, 0, 19, 0, 0);
+  
+  ResHandle handle = resource_get_handle(POKEMON_MAP_FILE);
+  size_t res_size = resource_size(handle);
+  s_world_map = (uint8_t*)malloc(res_size);
+  resource_load(handle, s_world_map, res_size);
+#if defined(PBL_COLOR)
+  GBC_Graphics_set_bg_palette(graphics, 0, 0b11111111, 0b11101010, 0b11010101, 0b11000000);
+  GBC_Graphics_set_bg_palette(graphics, 1, 0b11000000, 0b11000000, 0b11000000, 0b11000000);
+  GBC_Graphics_set_bg_palette(graphics, 2, 0b11101101, 0b11011000, 0b11000100, 0b11000000);
+  GBC_Graphics_set_bg_palette(graphics, 3, 0b11000000, 0b11000000, 0b11000000, 0b11000000);
+  GBC_Graphics_set_bg_palette(graphics, 4, 0b11000000, 0b11000000, 0b11000000, 0b11000000);
+  GBC_Graphics_set_bg_palette(graphics, 5, 0b11111111, 0b11111001, 0b11100100, 0b11000000);
+  GBC_Graphics_set_bg_palette(graphics, 6, 0b11000000, 0b11000000, 0b11000000, 0b11000000);
+  GBC_Graphics_set_bg_palette(graphics, 7, 0b11000000, 0b11000000, 0b11000000, 0b11000000);
+#else
+  GBC_Graphics_set_bg_palette(graphics, 0, 0, 0, 1, 1);
+  GBC_Graphics_set_bg_palette(graphics, 1, 0, 0, 1, 1);
+  GBC_Graphics_set_bg_palette(graphics, 2, 0, 0, 1, 1);
+  GBC_Graphics_set_bg_palette(graphics, 3, 0, 0, 1, 1);
+  GBC_Graphics_set_bg_palette(graphics, 4, 0, 0, 1, 1);
+  GBC_Graphics_set_bg_palette(graphics, 5, 0, 0, 1, 1);
+  GBC_Graphics_set_bg_palette(graphics, 6, 0, 0, 1, 1);
+  GBC_Graphics_set_bg_palette(graphics, 7, 0, 0, 1, 1);
+#endif
+
+  s_player_x = 16*51;
+  s_player_y = 16*13;
+
+  load_screen(graphics);
+
+  load_player_sprites(graphics);
+
+  // Create grass effect sprites
+  uint16_t spritesheet_offset = POKEMON_SPRITELET_GRASS * POKEMON_TILES_PER_SPRITE;
+  GBC_Graphics_load_from_tilesheet_into_vram(graphics, RESOURCE_ID_DATA_POKEMON_SPRITESHEET, spritesheet_offset, 1, 0, 3);
+  GBC_Graphics_oam_set_sprite(graphics, 0, 0, 0, 0, GBC_Graphics_attr_make(6, 3, false, false, false));
+  GBC_Graphics_oam_set_sprite(graphics, 1, 0, 0, 0, GBC_Graphics_attr_make(6, 3, true, false, false));
+  #if defined(PBL_COLOR)
+    GBC_Graphics_set_sprite_palette(graphics, 6, 0b11101101, 0b11011000, 0b11000100, 0b11000000);
+  #else
+    GBC_Graphics_set_sprite_palette(graphics, 6, 1, 1, 0, 0);
+  #endif
+
+  // Crate player sprites
+  for (uint8_t y = 0; y < 2; y++) {
+    for (uint8_t x = 0; x < 2; x++) {
+      GBC_Graphics_oam_set_sprite_pos(graphics, 2 + x + 2 * y, s_player_sprite_x + x * 8, s_player_sprite_y + y * 8 - 4);
+      GBC_Graphics_oam_set_sprite_attrs(graphics, 2 + x + 2 * y, GBC_Graphics_attr_make(0, 3, false, false, false));
+    }
+  }
+  set_player_sprites(graphics, false, false);
+
+  GBC_Graphics_lcdc_set_bg_layer_enabled(graphics, true);
+  GBC_Graphics_lcdc_set_window_layer_enabled(graphics, true);
+  GBC_Graphics_lcdc_set_sprite_layer_enabled(graphics, true);
+  GBC_Graphics_render(graphics);
+}
+
+void Pokemon_deinitialize(GBC_Graphics *graphics) {
+  free(s_world_map);
+  layer_set_update_proc(s_background_layer, NULL);
+}
+
+static void load_blocks_in_direction(GBC_Graphics *graphics, Dir direction) {
+  uint8_t bg_root_x = (GBC_Graphics_bg_get_scroll_x(graphics) >> 3);
+  uint8_t bg_root_y = (GBC_Graphics_bg_get_scroll_y(graphics) >> 3);
+  uint16_t tile_root_x = (s_player_x >> 3) - 8;
+  uint16_t tile_root_y = (s_player_y >> 3) - 8;
+  uint16_t num_x_tiles = 0, num_y_tiles = 0;
+  switch(direction) {
+    case D_UP:
+      tile_root_y -= 2;
+      bg_root_y -= 2;
+      num_x_tiles = 18;
+      num_y_tiles = 2;
+      break;
+    case D_LEFT:
+      tile_root_x -= 2;
+      bg_root_x -= 2;
+      num_x_tiles = 2;
+      num_y_tiles = 18;
+      break;
+    case D_DOWN:
+      tile_root_y += 18;
+      bg_root_y += 18;
+      num_x_tiles = 18;
+      num_y_tiles = 2;
+      break;
+    case D_RIGHT:
+      tile_root_x += 18;
+      bg_root_x += 18;
+      num_x_tiles = 2;
+      num_y_tiles = 18;
+      break;
+  }
+  load_tiles(graphics, bg_root_x & 31, bg_root_y & 31, tile_root_x, tile_root_y, num_x_tiles, num_y_tiles);
+}
+
+static uint8_t get_block_type(uint8_t *map, uint16_t x, uint16_t y) {
+  uint16_t tile_x = (x >> 3);
+  uint16_t tile_y = (y >> 3);
+  uint8_t chunk = map[(tile_x >> 2) + (tile_y >> 2) * POKEMON_MAP_CHUNK_WIDTH];
+  uint8_t block = pokemon_chunks[chunk][((tile_x >> 1) & 1) + ((tile_y >> 1) & 1) * 2];
+  return pokemon_block_type[block];
 }
 
 void Pokemon_step(GBC_Graphics *graphics) {
@@ -208,13 +344,19 @@ void Pokemon_step(GBC_Graphics *graphics) {
     s_target_x = s_player_x + direction_to_point(s_player_direction).x * (TILE_WIDTH * 2);
     s_target_y = s_player_y + direction_to_point(s_player_direction).y * (TILE_HEIGHT * 2);
     
-    s_can_move = get_square_info(graphics, s_target_x, s_target_y) != BLOCKING;
+    s_can_move = get_block_type(s_world_map, s_target_x+8, s_target_y-8) != BLOCK;
 
     if (!s_can_move) {
       s_target_x = s_player_x;
       s_target_y = s_player_y;
+    } else {
+      load_blocks_in_direction(graphics, s_player_direction);
     }
-
+  #if defined(PBL_BW)
+    GBC_Graphics_oam_hide_sprite(graphics, 0);
+    GBC_Graphics_oam_hide_sprite(graphics, 1);
+  #endif
+    GBC_Graphics_render(graphics);
   }
   switch(s_player_mode) {
     case P_STAND:
@@ -240,48 +382,50 @@ void Pokemon_step(GBC_Graphics *graphics) {
       break;
     case P_WALK:    
       if (s_can_move) {
-        move_player_sprites(graphics, direction_to_point(s_player_direction).x * 2, 
-                            direction_to_point(s_player_direction).y * 2);
-        s_player_x += direction_to_point(s_player_direction).x * 2;
-        s_player_y += direction_to_point(s_player_direction).y * 2;
+        if (s_walk_frame % FPS_DELAY == 0) {
+          s_player_x += direction_to_point(s_player_direction).x * 2;
+          s_player_y += direction_to_point(s_player_direction).y * 2;
+          GBC_Graphics_bg_move(graphics, direction_to_point(s_player_direction).x * 2, direction_to_point(s_player_direction).y * 2);
+        }
       }
-      if (get_square_info(graphics, s_target_x, s_target_y)) {
+      if (get_block_type(s_world_map, s_target_x+8, s_target_y-8) == GRASS) { // grass
         switch(s_walk_frame) {
-          case 2:
-          case 3:
-          case 4:
-            GBC_Graphics_oam_set_sprite_pos(graphics, 0, s_player_x, s_player_y + 4);
-            GBC_Graphics_oam_set_sprite_pos(graphics, 1, s_player_x + 8, s_player_y + 4);
+          case (int)(2 * FPS_DELAY):
+            GBC_Graphics_oam_set_sprite_pos(graphics, 0, s_player_sprite_x, s_player_sprite_y + 4);
+            GBC_Graphics_oam_set_sprite_pos(graphics, 1, s_player_sprite_x + 8, s_player_sprite_y + 4);
             break;
-          case 5:
-          case 6:
-            GBC_Graphics_oam_set_sprite_pos(graphics, 0, s_player_x - 1, s_player_y + 5);
-            GBC_Graphics_oam_set_sprite_pos(graphics, 1, s_player_x + 9, s_player_y + 5);
+          case (int)(5 * FPS_DELAY):
+            GBC_Graphics_oam_set_sprite_pos(graphics, 0, s_player_sprite_x - 1, s_player_sprite_y + 5);
+            GBC_Graphics_oam_set_sprite_pos(graphics, 1, s_player_sprite_x + 9, s_player_sprite_y + 5);
             break;
-          case 7:
+          case (int)(7 * FPS_DELAY):
+          #if defined(PBL_COLOR)
             GBC_Graphics_oam_hide_sprite(graphics, 0);
             GBC_Graphics_oam_hide_sprite(graphics, 1);
+          #else
+            GBC_Graphics_oam_set_sprite_pos(graphics, 0, s_player_sprite_x, s_player_sprite_y + 4);
+            GBC_Graphics_oam_set_sprite_pos(graphics, 1, s_player_sprite_x + 8, s_player_sprite_y + 4);
+          #endif
             break;
           default:
             break;
         }
       }
       switch(s_walk_frame) {
-        case 7:
+        case (int)(7 * FPS_DELAY):
           s_player_mode = P_STAND;
-          if(get_square_info(graphics, s_player_x, s_player_y) == GRASS) {
+        #if defined(PBL_COLOR)
+          if(get_block_type(s_world_map, s_player_x+8, s_player_y-8) == GRASS) {
             GBC_Graphics_oam_set_sprite_priority(graphics, 4, true);
             GBC_Graphics_oam_set_sprite_priority(graphics, 5, true);
           }
+        #endif
+          break;
         case 0:
-        case 1:
-        case 6:
+        case (int)(6 * FPS_DELAY):
           set_player_sprites(graphics, false,  s_player_direction == D_RIGHT);
           break;
-        case 2:
-        case 3:
-        case 4:
-        case 5:
+        case (int)(2 * FPS_DELAY):
           set_player_sprites(graphics, true,  s_player_direction == D_RIGHT 
                              || ((s_player_direction == D_DOWN || s_player_direction == D_UP) && s_flip_walk));
           break;
@@ -289,6 +433,7 @@ void Pokemon_step(GBC_Graphics *graphics) {
           break;
       }
       s_walk_frame++;
+      GBC_Graphics_render(graphics);
       break;
     default:
       break;
@@ -301,20 +446,29 @@ void Pokemon_handle_select(GBC_Graphics *graphics, bool pressed) {
 
 void Pokemon_handle_down(GBC_Graphics *graphics) {
   if (s_player_mode == P_STAND) {
-    s_player_direction = (s_player_direction + 1) % 4;
+    s_player_direction = (s_player_direction - 1) & 3;
     set_player_sprites(graphics, false, s_player_direction == D_RIGHT);
+    GBC_Graphics_render(graphics);
+  }
+}
+
+void Pokemon_handle_up(GBC_Graphics *graphics) {
+  if (s_player_mode == P_STAND) {
+    s_player_direction = (s_player_direction + 1) & 3;
+    set_player_sprites(graphics, false, s_player_direction == D_RIGHT);
+    GBC_Graphics_render(graphics);
   }
 }
 
 void Pokemon_handle_tap(GBC_Graphics *graphics) {
-  s_switch_character = !s_switch_character;
-  s_player_sprites = s_switch_character ? kris_sprites : chris_sprites;
-  for (uint8_t i = 0; i < 4; i++) {
-    GBC_Graphics_oam_set_sprite_palette(graphics, 2+i, s_switch_character ? 1 : 0);
-  }
-  set_player_sprites(graphics, false, s_player_direction == D_RIGHT);
+  load_player_sprites(graphics);
+  GBC_Graphics_render(graphics);
 }
 
 void Pokemon_handle_focus_lost(GBC_Graphics *graphics) {
+  s_select_pressed = false;
+}
 
+void Pokemon_handle_back(GBC_Graphics *graphics) {
+  window_stack_pop(true);
 }

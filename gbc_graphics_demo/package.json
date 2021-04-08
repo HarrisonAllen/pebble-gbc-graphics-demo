@@ -49,6 +49,16 @@
           "type": "raw",
           "name": "DATA_POKEMON_TILESHEET",
           "file": "data/PokemonTilesheet.bin"
+        },
+        {
+          "type": "raw",
+          "name": "DATA_POKEMON_ROUTE_1",
+          "file": "data/PokemonRoute1.bin"
+        },
+        {
+          "type": "raw",
+          "name": "DATA_POKEMON_SPRITESHEET",
+          "file": "data/PokemonSpritesheet.bin"
         }
       ]
     }

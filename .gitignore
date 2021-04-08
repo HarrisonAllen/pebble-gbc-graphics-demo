@@ -9,3 +9,5 @@
 # Local History for Visual Studio Code
 .history/
 **/[bB]uild/
+
+.lock-waf_linux2_build

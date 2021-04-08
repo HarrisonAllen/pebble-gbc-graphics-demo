@@ -5,27 +5,10 @@
 
 static Window *s_window;
 static GBC_Graphics *s_graphics;
-static bool s_scroll, s_show_window=true;
-static int s_state;
-static uint8_t s_scroll_speed = 0;
-static Layer *s_fps_counter_layer;
-static uint16_t s_last_frame_time;
-static uint16_t s_frame_times[50];
-static uint8_t s_frame_index;
-static bool s_frame_counter_enabled = true;
-static AppTimer *s_frame_timer, *s_fps_timer;
+static AppTimer *s_frame_timer;
 static uint16_t s_frame_counter;
 char s_frame_buffer[5] = {0};
-static uint8_t s_counter;
-
-static uint8_t screen_bounds[][2] = {
-  {0, 168},
-  {4, 160},
-  {12, 144},
-  {20, 128},
-  {28, 112},
-  {36, 96}
-};
+static Layer *s_background_layer;
 
 typedef enum {
   DM_START,
@@ -33,7 +16,7 @@ typedef enum {
   DM_POKEMON,
   DM_END
 } DemoMode;
-static DemoMode s_demo_mode = DM_MARIO;
+static DemoMode s_demo_mode = DM_POKEMON;
 
 void print_array(uint8_t* x, uint16_t len, uint16_t breakpoint);
 
@@ -43,7 +26,7 @@ static void load_demo(DemoMode demo) {
       Mario_initialize(s_graphics);
       break;
     case DM_POKEMON:
-      Pokemon_initialize(s_graphics);
+      Pokemon_initialize(s_graphics, s_background_layer);
     default:
       break;
   }
@@ -153,6 +136,7 @@ static void up_click_handler(ClickRecognizerRef recognizer, void *context) {
       Mario_handle_up_click(s_graphics);
       break;
     case DM_POKEMON:
+      Pokemon_handle_up(s_graphics);
       break;
     default:
       break;
@@ -178,6 +162,7 @@ static void back_click_handler(ClickRecognizerRef recognizer, void *context) {
       Mario_handle_back(s_graphics);
       break;
     case DM_POKEMON:
+      Pokemon_handle_back(s_graphics);
       break;
     default:
       break;
@@ -213,39 +198,6 @@ static void click_config_provider(void *context) {
   // window_single_repeating_click_subscribe(BUTTON_ID_UP, 30, up_click_handler);
 }
 
-static void nudge_bg() {
-  GBC_Graphics_bg_set_scroll_x(s_graphics, GBC_Graphics_stat_get_current_line(s_graphics) % 8);
-}
-
-static void palette_swap() {
-  switch((GBC_Graphics_stat_get_current_line(s_graphics) / 8) % 4) {
-    case 0:
-      GBC_Graphics_set_bg_palette(s_graphics, 0, 0b11000000, 0b11010101, 0b11101010, 0b11111111);
-      break;
-    case 1:
-      GBC_Graphics_set_bg_palette(s_graphics, 0, 0b11111111, 0b11101010, 0b11010101, 0b11000000);
-      break;
-    case 2:
-      GBC_Graphics_set_bg_palette(s_graphics, 0, 0b11111111, 0b11110000, 0b11001100, 0b11000011);
-      break;
-    case 3:
-      GBC_Graphics_set_bg_palette(s_graphics, 0, 0b11000011, 0b11001100, 0b11110000, 0b11111111);
-      break;
-  }
-}
-
-static void change_palette_midframe() {
-  GBC_Graphics_set_bg_palette(s_graphics, 0, 0b11111111, 0b11110000, 0b11001100, 0b11000011);  
-}
-
-static void reset_palette() {
-  GBC_Graphics_set_bg_palette(s_graphics, 0, 0b11000000, 0b11010101, 0b11101010, 0b11111111);
-}
-
-static void handle_frame() {
-
-}
-
 static void frame_timer_handle(void* context) {
   switch(s_demo_mode) {
     case DM_MARIO:
@@ -261,15 +213,6 @@ static void frame_timer_handle(void* context) {
   s_frame_counter++;
 
   s_frame_timer = app_timer_register(FRAME_DURATION, frame_timer_handle, NULL);
-}
-
-static void fps_timer_handle(void *context) {
-  snprintf(s_frame_buffer, 4, "%3d", s_frame_counter);
-  Mario_write_string_to_background(s_graphics, 12, 0, 6, s_frame_buffer, 0);
-  s_frame_counter = 0;
-  GBC_Graphics_render(s_graphics);
-
-  s_fps_timer = app_timer_register(FPS_TIMER_DELAY, fps_timer_handle, NULL);
 }
 
 static void will_focus_handler(bool in_focus) {
@@ -290,77 +233,15 @@ static void will_focus_handler(bool in_focus) {
   }
 }
 
-// void initialize_test_pattern() {
-//   GBC_Graphics_load_from_tilesheet_into_vram(s_graphics, RESOURCE_ID_DATA_BASIC_COLORS_TILESHEET, 0, 4, 0, 0);
-//   for (uint16_t i = 0; i < TILEMAP_SIZE; i++) {
-//     s_graphics->bg_tilemap[i] = i % 3;
-//     s_graphics->bg_attrmap[i] = 0;
-//     s_graphics->window_tilemap[i] = i%4;
-//     s_graphics->window_attrmap[i] = 2;
-//   }
-//   GBC_Graphics_set_bg_palette(s_graphics, 0, 0b11000000, 0b11010101, 0b11101010, 0b11111111);
-//   GBC_Graphics_set_bg_palette(s_graphics, 1, 0b11111111, 0b11101010, 0b11010101, 0b11000000);
-//   GBC_Graphics_set_bg_palette(s_graphics, 2, 0b11111111, 0b11110000, 0b11001100, 0b11000011);
-//   GBC_Graphics_set_bg_palette(s_graphics, 3, 0b11000011, 0b11001100, 0b11110000, 0b11111111);
-//   s_graphics->window_offset_y = 144;
-
-//   GBC_Graphics_load_from_tilesheet_into_vram(s_graphics, RESOURCE_ID_DATA_BASIC_SPRITESHEET, 0, 8, 0, 1);
-//   GBC_Graphics_set_sprite_palette(s_graphics, 0, 0b00000000, 0b11110000, 0b11001100, 0b11000011);
-//   GBC_Graphics_set_sprite_palette(s_graphics, 1, 0b00000000, 0b11001100, 0b11111111, 0b11000000);
-//   GBC_Graphics_set_sprite_palette(s_graphics, 2, 0b00000000, 0b11001100, 0b11001000, 0b11000000);
-//   GBC_Graphics_set_sprite_palette(s_graphics, 3, 0b00000000, 0b11111000, 0b11110000, 0b11000000);
-//   GBC_Graphics_oam_set_sprite(s_graphics, 0, 8, 16, 2, 0 | ATTR_VRAM_BANK_01_FLAG);
-//   GBC_Graphics_oam_set_sprite(s_graphics, 1, 16, 16, 2, 0 | ATTR_FLIP_FLAG_X | ATTR_VRAM_BANK_01_FLAG);
-//   GBC_Graphics_oam_set_sprite(s_graphics, 2, 15, 21, 0, 1 | ATTR_VRAM_BANK_01_FLAG);
-//   GBC_Graphics_oam_set_sprite(s_graphics, 3, 23, 21, 0, 1 | ATTR_FLIP_FLAG_X | ATTR_VRAM_BANK_01_FLAG);
-//   GBC_Graphics_oam_set_sprite(s_graphics, 20, 52, 73, 4, 2 | ATTR_VRAM_BANK_01_FLAG);
-//   GBC_Graphics_oam_set_sprite(s_graphics, 21, 60, 73, 5, 2 | ATTR_VRAM_BANK_01_FLAG | ATTR_FLIP_FLAG_Y);
-//   GBC_Graphics_oam_set_sprite(s_graphics, 39, 99, 101, 6, 3 | ATTR_VRAM_BANK_01_FLAG);
-//   GBC_Graphics_oam_set_sprite(s_graphics, 5, 0, 0, 0, 1 | ATTR_VRAM_BANK_01_FLAG);
-//   GBC_Graphics_oam_set_sprite(s_graphics, 5, SCREEN_WIDTH, SCREEN_HEIGHT, 0, 0 | ATTR_VRAM_BANK_01_FLAG);
-//   s_graphics->lcdc &= ~LCDC_SPRITE_SIZE_FLAG;
-//   GBC_Graphics_set_hblank_interrupt_callback(s_graphics, nudge_bg);
-//   GBC_Graphics_stat_set_hblank_interrupt_enabled(s_graphics, true);
-//   GBC_Graphics_stat_set_line_y_compare(s_graphics, 70);
-//   GBC_Graphics_set_line_compare_interrupt_callback(s_graphics, change_palette_midframe);
-//   GBC_Graphics_set_vblank_interrupt_callback(s_graphics, reset_palette);
-//   GBC_Graphics_stat_set_line_compare_interrupt_enabled(s_graphics, true);
-//   GBC_Graphics_stat_set_vblank_interrupt_enabled(s_graphics, true);
-// }
-
-static void fps_counter_update_proc(Layer *layer, GContext *ctx) {
-  if (!s_frame_counter_enabled) return;
-  uint16_t cur_time = time_ms(NULL, NULL);
-  uint16_t time_dif = cur_time - s_last_frame_time;
-  uint16_t fps = 1000 / time_dif;
-  static char s_buffer[5];
-  s_last_frame_time = cur_time;
-  snprintf(s_buffer, 5, "%d", averaging_filter(fps, s_frame_times, 10, &s_frame_index));
-  // graphics_context
-  GRect rect_bounds = GRect(0, 152, 16, 16);
-  graphics_context_set_fill_color(ctx, GColorWhite);
-  graphics_context_set_stroke_color(ctx, GColorWhite);
-  graphics_fill_rect(ctx, rect_bounds, 0, GCornerNone);
-
-  GFont font = fonts_get_system_font(FONT_KEY_GOTHIC_14_BOLD);
-  // Set the color
-  graphics_context_set_text_color(ctx, GColorBlack);
-
-  // Determine a reduced bounding box
-  GRect bounds = GRect(0, 152, 16, 16);
-
-  // Calculate the size of the text to be drawn, with restricted space
-  GSize text_size = graphics_text_layout_get_content_size(s_buffer, font, bounds,
-                                GTextOverflowModeWordWrap, GTextAlignmentLeft);
-
-  graphics_draw_text(ctx, s_buffer, font, bounds, GTextOverflowModeWordWrap, 
-                                            GTextAlignmentLeft, NULL);
-
-}
-
 static void window_load(Window *window) {
   Layer *window_layer = window_get_root_layer(window);
   GRect bounds = layer_get_bounds(window_layer);
+  window_set_background_color(window, GColorBlack);
+  
+  s_background_layer = layer_create(bounds);
+  // layer_set_update_proc(s_background_layer, background_update_proc);
+  layer_add_child(window_get_root_layer(window), s_background_layer);
+  layer_mark_dirty(s_background_layer);
 
   s_graphics = GBC_Graphics_ctor(window);
   load_demo(s_demo_mode);
@@ -375,7 +256,7 @@ static void window_load(Window *window) {
   // layer_add_child(window_get_root_layer(window), s_fps_counter_layer);
   
   s_frame_timer = app_timer_register(FRAME_DURATION, frame_timer_handle, NULL);
-  s_fps_timer = app_timer_register(FPS_TIMER_DELAY, fps_timer_handle, NULL);
+  // s_fps_timer = app_timer_register(FPS_TIMER_DELAY, fps_timer_handle, NULL);
 
   // layer_mark_dirty(s_foreground_layer);
   // layer_mark_dirty(s_player_ui_layer);
@@ -386,7 +267,7 @@ static void window_unload(Window *window) {
 
   unload_demo(s_demo_mode);
 
-  // layer_destroy(s_fps_counter_layer);
+  layer_destroy(s_background_layer);
 
   window_destroy(s_window);
 }

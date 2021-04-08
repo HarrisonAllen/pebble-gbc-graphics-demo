@@ -1,0 +1,18 @@
+{
+	{00,01,02,03,}, // TreeTop
+	{02,03,04,05,}, // TreeBot
+	{00,01,04,05,}, // Bush
+	{06,06,06,06,}, // Grass
+	{07,07,07,07,}, // TallGrass
+	{08,08,08,08,}, // Gravel
+	{09,06,09,06,}, // GrassFence Left
+	{06,09,06,09,}, // GrassFence Right
+	{08,09,08,09,}, // GravelFence Right
+	{09,08,09,08,}, // GravelFence Left
+	{10,06,10,06,}, // Cliff W
+	{10,06,11,12,}, // Cliff SW
+	{06,06,12,12,}, // Cliff S
+	{06,14,12,13,}, // Cliff SE
+	{06,14,06,14,}, // Cliff E
+	{15,16,17,18,}, // Sign
+};

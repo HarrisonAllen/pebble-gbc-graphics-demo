@@ -19,11 +19,14 @@
 #define MD_LEFT 0b0010
 #define MD_DOWN 0b0100
 #define MD_RIGHT 0b1000
-#define NUM_MENU_ITEMS 6
+#define MARIO_NUM_MENU_ITEMS 6
 #define MARIO_SAVE_KEY 0
+
 #if defined(PBL_PLATFORM_DIORITE)
+    #define FRAME_BOOST 0
     #define MARIO_FRAME_SKIP 4
 #else
+    #define FRAME_BOOST 1
     #define MARIO_FRAME_SKIP 1
 #endif
 
@@ -41,9 +44,7 @@ typedef enum {
 } MarioJumpState;
 
 typedef struct {
-    // TODO: Add values to save, e.g. player x, player y, coins, time, etc etc
-    // Then store them with the Storage API https://developer.rebble.io/developer.pebble.com/guides/events-and-services/persistent-storage/index.html
-    // Want to look into:
+    // TODO: Want to look into:
     //  - Checking if save data exists (what does api return if no data at key?)
 
     uint16_t player_score;
@@ -54,7 +55,7 @@ typedef struct {
 } MarioSaveData;
 
 void Mario_write_string_to_background(GBC_Graphics *graphics, uint8_t bg_tile_x, uint8_t bg_tile_y, uint8_t attrs, char *string, uint8_t num_to_write);
-void Mario_initialize(GBC_Graphics *graphics);
+void Mario_initialize(GBC_Graphics *graphics, void (*next_demo_callback)());
 void Mario_deinitialize(GBC_Graphics *graphics);
 void Mario_step(GBC_Graphics *graphics);
 void Mario_load_column_at_pos(GBC_Graphics *graphics, uint16_t column, uint8_t bg_tile_x);

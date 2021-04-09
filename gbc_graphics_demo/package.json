@@ -59,6 +59,11 @@
           "type": "raw",
           "name": "DATA_POKEMON_SPRITESHEET",
           "file": "data/PokemonSpritesheet.bin"
+        },
+        {
+          "type": "raw",
+          "name": "DATA_POKEMON_MENU_TILESHEET",
+          "file": "data/PokemonMenuTilesheet.bin"
         }
       ]
     }

@@ -11,7 +11,6 @@ char s_frame_buffer[5] = {0};
 static Layer *s_background_layer;
 
 typedef enum {
-  DM_START,
   DM_MARIO,
   DM_POKEMON,
   DM_END
@@ -20,13 +19,15 @@ static DemoMode s_demo_mode = DM_POKEMON;
 
 void print_array(uint8_t* x, uint16_t len, uint16_t breakpoint);
 
+static void next_demo();
+
 static void load_demo(DemoMode demo) {
   switch(demo) {
     case DM_MARIO:
-      Mario_initialize(s_graphics);
+      Mario_initialize(s_graphics, next_demo);
       break;
     case DM_POKEMON:
-      Pokemon_initialize(s_graphics, s_background_layer);
+      Pokemon_initialize(s_graphics, s_background_layer, next_demo);
     default:
       break;
   }
@@ -42,6 +43,12 @@ static void unload_demo(DemoMode demo) {
     default:
       break;
   }
+}
+
+static void next_demo() {
+  unload_demo(s_demo_mode);
+  s_demo_mode = (s_demo_mode + 1) % DM_END;
+  load_demo(s_demo_mode);
 }
 
 uint16_t averaging_filter(uint16_t input, uint16_t* stored_values, uint8_t order, uint8_t* index){
@@ -62,6 +69,7 @@ static void select_click_handler(ClickRecognizerRef recognizer, void *context) {
       Mario_handle_select(s_graphics);
       break;
     case DM_POKEMON:
+      Pokemon_handle_select_click(s_graphics);
       break;
     default:
       break;

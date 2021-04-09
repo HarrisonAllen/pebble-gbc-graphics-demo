@@ -364,11 +364,11 @@ static void render_sprite_graphics(GBC_Graphics *self, Layer *layer, GContext *c
 
         for (tile_x = 0; tile_x < TILE_WIDTH; tile_x++) {
           // Check if the pixel is on the screen
-          screen_x = sprite[0] + tile_x - SPRITE_OFFSET_X + min_x;
-          if (screen_x - min_x >= max_x) {
+          screen_x = sprite[0] + tile_x - SPRITE_OFFSET_X + self->screen_x_origin;
+          if (screen_x >= max_x) {
             break;
           }
-          if (screen_x - min_x < min_x) {
+          if (screen_x < min_x) {
             continue;
           }
 

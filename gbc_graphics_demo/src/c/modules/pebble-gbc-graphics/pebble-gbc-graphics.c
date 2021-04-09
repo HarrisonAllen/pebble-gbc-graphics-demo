@@ -890,3 +890,13 @@ void GBC_Graphics_oam_swap_sprite_tiles_and_attrs(GBC_Graphics *self, uint8_t sp
     source_2[i] = temp;
   }
 }
+
+void GBC_Graphics_copy_background_to_window(GBC_Graphics *self) {
+  memcpy(self->window_tilemap, self->bg_tilemap, TILEMAP_SIZE);
+  memcpy(self->window_attrmap, self->bg_attrmap, ATTRMAP_SIZE);
+}
+
+void GBC_Graphics_copy_window_to_background(GBC_Graphics *self) {
+  memcpy(self->bg_tilemap, self->window_tilemap, TILEMAP_SIZE);
+  memcpy(self->bg_attrmap, self->window_attrmap, ATTRMAP_SIZE);
+}

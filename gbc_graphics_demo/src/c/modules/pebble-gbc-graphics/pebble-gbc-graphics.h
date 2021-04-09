@@ -1113,3 +1113,17 @@ void GBC_Graphics_oam_swap_sprite_attrs(GBC_Graphics *self, uint8_t sprite_num_1
  * @param sprite_num_2 The second sprite to swap
  */
 void GBC_Graphics_oam_swap_sprite_tiles_and_attrs(GBC_Graphics *self, uint8_t sprite_num_1, uint8_t sprite_num_2);
+
+/**
+ * Copies the data in the background layer to the window layer
+ * 
+ * @param self A pointer to the target GBC Graphics object
+ */
+void GBC_Graphics_copy_background_to_window(GBC_Graphics *self);
+
+/**
+ * Copies the data in the window layer to the background layer
+ * 
+ * @param self A pointer to the target GBC Graphics object
+ */
+void GBC_Graphics_copy_window_to_background(GBC_Graphics *self);

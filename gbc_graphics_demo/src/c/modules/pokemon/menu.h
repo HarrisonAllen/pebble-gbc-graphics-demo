@@ -18,3 +18,14 @@ void draw_menu_rectangle(GBC_Graphics *graphics, GRect menu_bounds);
 void draw_blank_rectangle(GBC_Graphics *graphics, GRect rect_bounds);
 // pos is in tiles
 void draw_text_at_location(GBC_Graphics *graphics, GPoint pos, char *text);
+void draw_menu(GBC_Graphics *graphics, GRect rect_bounds, char *text, bool blank);
+void draw_textbox(GBC_Graphics *graphics, GRect rect_bounds, GPoint offset, char *text, bool blank);
+
+void erase_menu_cursor(GBC_Graphics *graphics);
+void draw_menu_cursor(GBC_Graphics *graphics);
+void set_menu_root(GPoint menu_root);
+void set_cursor_pos(uint8_t cursor_pos);
+void set_num_menu_items(uint8_t num_menu_items);
+uint8_t get_cursor_pos();
+void move_cursor_down(GBC_Graphics *graphics);
+void move_cursor_up(GBC_Graphics *graphics);

@@ -41,8 +41,9 @@ static uint8_t s_player_sprite_x, s_player_sprite_y;
 static Layer *s_background_layer;
 static const uint8_t *s_player_palette;
 static PokemonGameState s_game_state;
-static uint8_t s_cursor_pos;
 static void (*s_next_demo_callback)();
+static PokemonMenuState s_menu_state;
+static bool s_save_file_exists;
 
 static GPoint direction_to_point(Dir dir) {
     switch (dir) {
@@ -226,12 +227,30 @@ static void set_player_sprites(GBC_Graphics *graphics, bool walk_sprite, bool x_
   }
 }
 
-void Pokemon_initialize(GBC_Graphics *graphics, Layer *background_layer, void (*next_demo_callback)()) {
-  layer_set_update_proc(background_layer, background_update_proc);
-  s_background_layer = background_layer;
-  
-  s_next_demo_callback = next_demo_callback;
+static bool load(time_t *last_save, uint16_t *player_x, uint16_t *player_y) {
+  PokemonSaveData data;
+  bool save_exists = false;
+  if (persist_read_data(POKEMON_SAVE_KEY, &data, sizeof(PokemonSaveData)) != E_DOES_NOT_EXIST) {
+    if (player_x)
+      *player_x = data.player_x;
+    if (player_y)
+      *player_y = data.player_y;
+    if (last_save)
+      *last_save = data.last_save;
+    save_exists = true;
+  }
+  return save_exists;
+}
 
+static uint8_t get_block_type(uint8_t *map, uint16_t x, uint16_t y) {
+  uint16_t tile_x = (x >> 3);
+  uint16_t tile_y = (y >> 3);
+  uint8_t chunk = map[(tile_x >> 2) + (tile_y >> 2) * POKEMON_MAP_CHUNK_WIDTH];
+  uint8_t block = pokemon_chunks[chunk][((tile_x >> 1) & 1) + ((tile_y >> 1) & 1) * 2];
+  return pokemon_block_type[block];
+}
+
+static void load_game(GBC_Graphics *graphics) {
   s_player_direction = D_DOWN;
   s_player_mode = P_STAND;
   s_game_state = PG_PLAY;
@@ -240,41 +259,12 @@ void Pokemon_initialize(GBC_Graphics *graphics, Layer *background_layer, void (*
   s_player_sprite_x = 16 * 4 + SPRITE_OFFSET_X;
   s_player_sprite_y = 16 * 4 + SPRITE_OFFSET_Y;
 
-  GBC_Graphics_set_screen_bounds(graphics, SCREEN_BOUNDS_SQUARE);
-  GBC_Graphics_window_set_offset_pos(graphics, 0, 168);
-  GBC_Graphics_lcdc_set_8x16_sprite_mode_enabled(graphics, false);
-  for (uint8_t i = 0; i < 40; i++) {
-      GBC_Graphics_oam_hide_sprite(graphics, i);
-  }
-
   GBC_Graphics_load_from_tilesheet_into_vram(graphics, RESOURCE_ID_DATA_POKEMON_TILESHEET, 0, 19, 0, 0);
   
   ResHandle handle = resource_get_handle(POKEMON_MAP_FILE);
   size_t res_size = resource_size(handle);
   s_world_map = (uint8_t*)malloc(res_size);
   resource_load(handle, s_world_map, res_size);
-#if defined(PBL_COLOR)
-  GBC_Graphics_set_bg_palette(graphics, 0, 0b11111111, 0b11101010, 0b11010101, 0b11000000);
-  GBC_Graphics_set_bg_palette(graphics, 1, 0b11000000, 0b11000000, 0b11000000, 0b11000000);
-  GBC_Graphics_set_bg_palette(graphics, 2, 0b11101101, 0b11011000, 0b11000100, 0b11000000);
-  GBC_Graphics_set_bg_palette(graphics, 3, 0b11000000, 0b11000000, 0b11000000, 0b11000000);
-  GBC_Graphics_set_bg_palette(graphics, 4, 0b11000000, 0b11000000, 0b11000000, 0b11000000);
-  GBC_Graphics_set_bg_palette(graphics, 5, 0b11111111, 0b11111001, 0b11100100, 0b11000000);
-  GBC_Graphics_set_bg_palette(graphics, 6, 0b11000000, 0b11000000, 0b11000000, 0b11000000);
-  GBC_Graphics_set_bg_palette(graphics, 7, 0b11000000, 0b11000000, 0b11000000, 0b11000000);
-#else
-  GBC_Graphics_set_bg_palette(graphics, 0, 0, 0, 1, 1);
-  GBC_Graphics_set_bg_palette(graphics, 1, 0, 0, 1, 1);
-  GBC_Graphics_set_bg_palette(graphics, 2, 0, 0, 1, 1);
-  GBC_Graphics_set_bg_palette(graphics, 3, 0, 0, 1, 1);
-  GBC_Graphics_set_bg_palette(graphics, 4, 0, 0, 1, 1);
-  GBC_Graphics_set_bg_palette(graphics, 5, 0, 0, 1, 1);
-  GBC_Graphics_set_bg_palette(graphics, 6, 0, 0, 1, 1);
-  GBC_Graphics_set_bg_palette(graphics, 7, 0, 0, 1, 1);
-#endif
-
-  s_player_x = 16*51;
-  s_player_y = 16*13;
 
   load_screen(graphics);
 
@@ -300,13 +290,84 @@ void Pokemon_initialize(GBC_Graphics *graphics, Layer *background_layer, void (*
   }
   set_player_sprites(graphics, false, false);
 
+  if(get_block_type(s_world_map, s_player_x+8, s_player_y) == GRASS) {
+#if defined(PBL_COLOR)
+    GBC_Graphics_oam_set_sprite_priority(graphics, 4, true);
+    GBC_Graphics_oam_set_sprite_priority(graphics, 5, true);
+#else
+    GBC_Graphics_oam_set_sprite_pos(graphics, 0, s_player_sprite_x, s_player_sprite_y + 4);
+    GBC_Graphics_oam_set_sprite_pos(graphics, 1, s_player_sprite_x + 8, s_player_sprite_y + 4);
+#endif
+  }
+
+  GBC_Graphics_render(graphics);
+}
+
+void Pokemon_initialize(GBC_Graphics *graphics, Layer *background_layer, void (*next_demo_callback)()) {
+  layer_set_update_proc(background_layer, background_update_proc);
+  s_background_layer = background_layer;
+  
+  s_next_demo_callback = next_demo_callback;
+
+  GBC_Graphics_set_screen_bounds(graphics, SCREEN_BOUNDS_SQUARE);
+  GBC_Graphics_window_set_offset_pos(graphics, 0, 168);
+  GBC_Graphics_lcdc_set_8x16_sprite_mode_enabled(graphics, false);
+  for (uint8_t i = 0; i < 40; i++) {
+      GBC_Graphics_oam_hide_sprite(graphics, i);
+  }
+
+#if defined(PBL_COLOR)
+  GBC_Graphics_set_bg_palette(graphics, 0, 0b11111111, 0b11101010, 0b11010101, 0b11000000);
+  GBC_Graphics_set_bg_palette(graphics, 1, 0b11000000, 0b11000000, 0b11000000, 0b11000000);
+  GBC_Graphics_set_bg_palette(graphics, 2, 0b11101101, 0b11011000, 0b11000100, 0b11000000);
+  GBC_Graphics_set_bg_palette(graphics, 3, 0b11000000, 0b11000000, 0b11000000, 0b11000000);
+  GBC_Graphics_set_bg_palette(graphics, 4, 0b11000000, 0b11000000, 0b11000000, 0b11000000);
+  GBC_Graphics_set_bg_palette(graphics, 5, 0b11111111, 0b11111001, 0b11100100, 0b11000000);
+  GBC_Graphics_set_bg_palette(graphics, 6, 0b11000000, 0b11000000, 0b11000000, 0b11000000);
+  GBC_Graphics_set_bg_palette(graphics, 7, 0b11000000, 0b11000000, 0b11000000, 0b11000000);
+#else
+  GBC_Graphics_set_bg_palette(graphics, 0, 0, 0, 1, 1);
+  GBC_Graphics_set_bg_palette(graphics, 1, 0, 0, 1, 1);
+  GBC_Graphics_set_bg_palette(graphics, 2, 0, 0, 1, 1);
+  GBC_Graphics_set_bg_palette(graphics, 3, 0, 0, 1, 1);
+  GBC_Graphics_set_bg_palette(graphics, 4, 0, 0, 1, 1);
+  GBC_Graphics_set_bg_palette(graphics, 5, 0, 0, 1, 1);
+  GBC_Graphics_set_bg_palette(graphics, 6, 0, 0, 1, 1);
+  GBC_Graphics_set_bg_palette(graphics, 7, 0, 0, 1, 1);
+#endif
+
   GBC_Graphics_load_from_tilesheet_into_vram(graphics, RESOURCE_ID_DATA_POKEMON_MENU_TILESHEET, 0, 104, 0, 1);
 
   GBC_Graphics_stat_set_line_compare_interrupt_enabled(graphics, false);
   GBC_Graphics_lcdc_set_bg_layer_enabled(graphics, true);
   GBC_Graphics_lcdc_set_window_layer_enabled(graphics, true);
   GBC_Graphics_lcdc_set_sprite_layer_enabled(graphics, true);
+
+  time_t last_save;
+  set_cursor_pos(0);
+
+  draw_blank_rectangle(graphics, GRect(0, 0, 18, 18));
+  if (load(&last_save, NULL, NULL)) {
+    s_save_file_exists = true;
+
+    draw_menu(graphics, GRect(POKEMON_START_MENU_ROOT_X, POKEMON_START_MENU_ROOT_Y, 14, 8), "CONTINUE\n\nNEW GAME\n\nQUIT", false);
+    set_num_menu_items(3);
+
+    draw_textbox(graphics, GRect(POKEMON_START_INFO_ROOT_X, POKEMON_START_INFO_ROOT_Y, 16, 5), GPoint(1, 1), "Last save:", false);
+    struct tm *tick_time = localtime(&last_save);
+    char text_buffer[20] = {0};
+    strftime(text_buffer, sizeof(text_buffer), "%a %b %d", tick_time);
+    draw_text_at_location(graphics, GPoint(POKEMON_START_INFO_ROOT_X + 3, POKEMON_START_INFO_ROOT_Y + 2), text_buffer);
+    strftime(text_buffer, sizeof(text_buffer), "%r", tick_time);
+    draw_text_at_location(graphics, GPoint(POKEMON_START_INFO_ROOT_X + 3, POKEMON_START_INFO_ROOT_Y + 3), text_buffer);
+  } else {    
+    draw_menu(graphics, GRect(POKEMON_START_MENU_ROOT_X, POKEMON_START_MENU_ROOT_Y, 12, 6), "NEW GAME\n\nQUIT", false);
+    set_num_menu_items(2);
+  }
+
   GBC_Graphics_render(graphics);
+
+  // load_game(graphics);
 }
 
 void Pokemon_deinitialize(GBC_Graphics *graphics) {
@@ -347,14 +408,6 @@ static void load_blocks_in_direction(GBC_Graphics *graphics, Dir direction) {
       break;
   }
   load_tiles(graphics, bg_root_x & 31, bg_root_y & 31, tile_root_x, tile_root_y, num_x_tiles, num_y_tiles);
-}
-
-static uint8_t get_block_type(uint8_t *map, uint16_t x, uint16_t y) {
-  uint16_t tile_x = (x >> 3);
-  uint16_t tile_y = (y >> 3);
-  uint8_t chunk = map[(tile_x >> 2) + (tile_y >> 2) * POKEMON_MAP_CHUNK_WIDTH];
-  uint8_t block = pokemon_chunks[chunk][((tile_x >> 1) & 1) + ((tile_y >> 1) & 1) * 2];
-  return pokemon_block_type[block];
 }
 
 static void play(GBC_Graphics *graphics) {
@@ -464,34 +517,22 @@ static void play(GBC_Graphics *graphics) {
   }
 }
 
-static void erase_menu_cursor(GBC_Graphics *graphics) {
-  draw_text_at_location(graphics, GPoint(POKEMON_MENU_ROOT_X + 1, POKEMON_MENU_ROOT_Y + 2 + s_cursor_pos * 2), " ");
-}
-
-static void draw_menu_cursor(GBC_Graphics *graphics) {
-  draw_text_at_location(graphics, GPoint(POKEMON_MENU_ROOT_X + 1, POKEMON_MENU_ROOT_Y + 2 + s_cursor_pos * 2), ">");
-}
-
 static void draw_menu_info(GBC_Graphics *graphics) {
-  draw_blank_rectangle(graphics, GRect(POKEMON_INFO_ROOT_X, POKEMON_INFO_ROOT_Y, 14, 4));
-  switch (s_cursor_pos) {
+  switch (get_cursor_pos()) {
     case 0:
-      draw_text_at_location(graphics, GPoint(POKEMON_INFO_ROOT_X + 1, POKEMON_INFO_ROOT_Y + 1), "Close this\n\nmenu");
+      draw_textbox(graphics, GRect(POKEMON_INFO_ROOT_X, POKEMON_INFO_ROOT_Y, 14, 5), GPoint(1, 1), "Close this\n\nmenu", true);
       break;
     case 1:
-      draw_text_at_location(graphics, GPoint(POKEMON_INFO_ROOT_X + 1, POKEMON_INFO_ROOT_Y + 1), "View time &\n\nPebble info");
+      draw_textbox(graphics, GRect(POKEMON_INFO_ROOT_X, POKEMON_INFO_ROOT_Y, 14, 5), GPoint(1, 1), "View time &\n\nPebble info", true);
       break;
     case 2:
-      draw_text_at_location(graphics, GPoint(POKEMON_INFO_ROOT_X + 1, POKEMON_INFO_ROOT_Y + 1), "Switch to\n\nMario demo");
+      draw_textbox(graphics, GRect(POKEMON_INFO_ROOT_X, POKEMON_INFO_ROOT_Y, 14, 5), GPoint(1, 1), "Switch to\n\nnext demo", true);
       break;
     case 3:
-      draw_text_at_location(graphics, GPoint(POKEMON_INFO_ROOT_X + 1, POKEMON_INFO_ROOT_Y + 1), "Save your\n\nprogress");
+      draw_textbox(graphics, GRect(POKEMON_INFO_ROOT_X, POKEMON_INFO_ROOT_Y, 14, 5), GPoint(1, 1), "Save your\n\nprogress", true);
       break;
     case 4:
-      draw_text_at_location(graphics, GPoint(POKEMON_INFO_ROOT_X + 1, POKEMON_INFO_ROOT_Y + 1), "Load prev\n\nsave");
-      break;
-    case 5:
-      draw_text_at_location(graphics, GPoint(POKEMON_INFO_ROOT_X + 1, POKEMON_INFO_ROOT_Y + 1), "Quit this\n\ndemo app");
+      draw_textbox(graphics, GRect(POKEMON_INFO_ROOT_X, POKEMON_INFO_ROOT_Y, 14, 5), GPoint(1, 1), "Quit this\n\ndemo app", true);
       break;
     default:
       break;
@@ -500,9 +541,8 @@ static void draw_menu_info(GBC_Graphics *graphics) {
 
 static void draw_pause_menu(GBC_Graphics *graphics) {
   load_screen(graphics);
-  draw_menu_rectangle(graphics, GRect(POKEMON_MENU_ROOT_X, POKEMON_MENU_ROOT_Y, 9, POKEMON_NUM_MENU_ITEMS * 2 + 2));
-  draw_text_at_location(graphics, GPoint(POKEMON_MENU_ROOT_X + 2, POKEMON_MENU_ROOT_Y + 2), "RESUME\n\nPEBBLE\n\nMARIO\n\nSAVE\n\nLOAD\n\nQUIT");
-  draw_menu_cursor(graphics);
+  draw_menu(graphics, GRect(POKEMON_MENU_ROOT_X, POKEMON_MENU_ROOT_Y, 9, POKEMON_NUM_MENU_ITEMS * 2 + 2), "RESUME\n\nPEBBLE\n\nNEXT\n\nSAVE\n\nQUIT", false);
+  set_num_menu_items(POKEMON_NUM_MENU_ITEMS);
   draw_menu_info(graphics);
 }
 
@@ -511,9 +551,10 @@ void Pokemon_step(GBC_Graphics *graphics) {
   // AccelData accel = (AccelData) { .x = 0, .y = 0, .z = 0 };
   // Dir old_direction = s_player_direction;
   if (s_player_mode == P_STAND && s_game_state == PG_PAUSE_QUEUED) {
-    s_cursor_pos = 0;
+    set_cursor_pos(0);
     draw_pause_menu(graphics);
     s_game_state = PG_PAUSE;
+    s_menu_state = PM_BASE;
     GBC_Graphics_render(graphics);
   }
   switch (s_game_state) {
@@ -534,49 +575,105 @@ void Pokemon_handle_select(GBC_Graphics *graphics, bool pressed) {
   }
 }
 
-static void save(GBC_Graphics *graphics) {
-
+static void save() {
+  PokemonSaveData data = (PokemonSaveData) {
+    .player_x = s_player_x,
+    .player_y = s_player_y,
+    .last_save = time(NULL),
+  };
+  persist_write_data(POKEMON_SAVE_KEY, &data, sizeof(PokemonSaveData));
+  s_save_file_exists = true;
 }
 
-static void load(GBC_Graphics *graphics) {
-    // MarioSaveData data;
-    // if (persist_read_data(MARIO_SAVE_KEY, &data, sizeof(MarioSaveData)) != E_DOES_NOT_EXIST) {
-    //     s_player_coins = data.player_coins;
-    //     s_player_score = data.player_score;
-    //     s_player_world_x = data.player_world_x;
-    //     s_player_y = data.player_y;
-    //     s_time = data.time_remaining;
-    //     s_restart = false;
-    //     Mario_deinitialize(graphics);
-    //     Mario_initialize(graphics, s_next_demo_callback);
-    // } else {
-    //     s_load_failed = true;
-    //     draw_pause_menu(graphics, s_cursor_pos, s_saved, s_load_failed);
-    //     GBC_Graphics_render(graphics);
-    // }
+static void draw_pebble_info(GBC_Graphics *graphics) {
+  char text_buffer[20] = {0};
+  // load_screen(graphics);
+  draw_menu_rectangle(graphics, GRect(POKEMON_PEBBLE_ROOT_X, POKEMON_PEBBLE_ROOT_Y, 16, 11));
+  
+  char time_buffer[9] = {0};
+  clock_copy_time_string(time_buffer, 9);
+  draw_text_at_location(graphics, GPoint(POKEMON_PEBBLE_ROOT_X + 2, POKEMON_PEBBLE_ROOT_Y + 2), time_buffer);
+
+  time_t temp = time(NULL);
+  struct tm *tick_time = localtime(&temp);
+  strftime(text_buffer, sizeof(text_buffer), "%A", tick_time);
+  draw_text_at_location(graphics, GPoint(POKEMON_PEBBLE_ROOT_X + 2, POKEMON_PEBBLE_ROOT_Y + 4), text_buffer);
+  strftime(text_buffer, sizeof(text_buffer), "%b %d, %Y", tick_time);
+  draw_text_at_location(graphics, GPoint(POKEMON_PEBBLE_ROOT_X + 2, POKEMON_PEBBLE_ROOT_Y + 6), text_buffer);
+
+  snprintf(text_buffer, sizeof(text_buffer), "Battery: %d%%", battery_state_service_peek().charge_percent);
+  draw_text_at_location(graphics, GPoint(POKEMON_PEBBLE_ROOT_X + 2, POKEMON_PEBBLE_ROOT_Y + 8), text_buffer);
 }
 
 void Pokemon_handle_select_click(GBC_Graphics *graphics) {
-  if (s_game_state == PG_PAUSE) {
-    switch (s_cursor_pos) {
-      case 0: // Resume
-        s_game_state = PG_PLAY;
-        load_screen(graphics);
-        GBC_Graphics_render(graphics);
-        break;
-      case 1: // Mario
-        s_next_demo_callback();
-        break;
-      case 2:
-        save(graphics);
-        break;
-      case 3: // Load
-        load(graphics);
-        break;
-      case 4: // Quit
-        window_stack_pop(true);
-        break;
-    }
+  switch(s_game_state) {
+    case PG_PAUSE:
+      switch(s_menu_state) {
+        case PM_BASE:
+          switch (get_cursor_pos()) {
+            case 0: // Resume
+              s_game_state = PG_PLAY;
+              load_screen(graphics);
+              GBC_Graphics_render(graphics);
+              break;
+            case 1: // Pebble
+              draw_pebble_info(graphics);
+              s_menu_state = PM_PEBBLE;
+              GBC_Graphics_render(graphics);
+              break;
+            case 2: // Next
+              s_next_demo_callback();
+              break;
+            case 3: // Save
+              save();
+              break;
+            case 4: // Quit
+              window_stack_pop(true);
+              break;
+          }
+          break;
+        case PM_PEBBLE:
+          s_menu_state = PM_BASE;
+          draw_pause_menu(graphics);
+          GBC_Graphics_render(graphics);
+          break;
+        default:
+          break;
+      }
+      break;
+    case PG_INTRO:
+      if (s_save_file_exists) {
+        switch(get_cursor_pos()) {
+          case 0: // Continue
+            load(NULL, &s_player_x, &s_player_y);
+            load_game(graphics);
+            s_game_state = PG_PLAY;
+            break;
+          case 1: // New
+            s_player_x = POKEMON_PLAYER_ORIGIN_X;
+            s_player_y = POKEMON_PLAYER_ORIGIN_Y;
+            load_game(graphics);
+            s_game_state = PG_PLAY;
+            break;
+          case 2: // Quit
+            window_stack_pop(true);
+            break;
+        }
+      } else {
+        switch(get_cursor_pos()) {
+          case 0: // New
+            s_player_x = POKEMON_PLAYER_ORIGIN_X;
+            s_player_y = POKEMON_PLAYER_ORIGIN_Y;
+            load_game(graphics);
+            s_game_state = PG_PLAY;
+            break;
+          case 1: // Quit
+            window_stack_pop(true);
+            break;
+        }
+      }
+    default:
+      break;
   }
 }
 
@@ -590,10 +687,18 @@ void Pokemon_handle_down(GBC_Graphics *graphics) {
       }
       break;
     case PG_PAUSE:
-      erase_menu_cursor(graphics);
-      s_cursor_pos = (s_cursor_pos + 1) % POKEMON_NUM_MENU_ITEMS;
-      draw_menu_info(graphics);
-      draw_menu_cursor(graphics);
+      switch (s_menu_state) {
+        case PM_BASE:
+          draw_menu_info(graphics);
+          move_cursor_down(graphics);
+          GBC_Graphics_render(graphics);
+          break;
+        default:
+          break;
+      }
+      break;
+    case PG_INTRO:
+      move_cursor_down(graphics);
       GBC_Graphics_render(graphics);
       break;
     default:
@@ -611,10 +716,18 @@ void Pokemon_handle_up(GBC_Graphics *graphics) {
       }
       break;
     case PG_PAUSE:
-      erase_menu_cursor(graphics);
-        s_cursor_pos = s_cursor_pos == 0 ? POKEMON_NUM_MENU_ITEMS - 1 : s_cursor_pos - 1;
-      draw_menu_info(graphics);
-      draw_menu_cursor(graphics);
+      switch (s_menu_state) {
+        case PM_BASE:
+          draw_menu_info(graphics);
+          move_cursor_up(graphics);
+          GBC_Graphics_render(graphics);
+          break;
+        default:
+          break;
+      }
+      break;
+    case PG_INTRO:
+      move_cursor_up(graphics);
       GBC_Graphics_render(graphics);
       break;
     default:
@@ -623,8 +736,10 @@ void Pokemon_handle_up(GBC_Graphics *graphics) {
 }
 
 void Pokemon_handle_tap(GBC_Graphics *graphics) {
-  load_player_sprites(graphics);
-  GBC_Graphics_render(graphics);
+  if (s_game_state == PG_PLAY) {
+    load_player_sprites(graphics);
+    GBC_Graphics_render(graphics);
+  }
 }
 
 void Pokemon_handle_focus_lost(GBC_Graphics *graphics) {
@@ -637,9 +752,23 @@ void Pokemon_handle_back(GBC_Graphics *graphics) {
       s_game_state = PG_PAUSE_QUEUED;
       break;
     case PG_PAUSE:
-      s_game_state = PG_PLAY;
-      load_screen(graphics);
-      GBC_Graphics_render(graphics);
+      switch(s_menu_state) {
+        case PM_BASE:
+          s_game_state = PG_PLAY;
+          load_screen(graphics);
+          GBC_Graphics_render(graphics);
+          break;
+        case PM_PEBBLE:
+          s_menu_state = PM_BASE;
+          draw_pause_menu(graphics);
+          GBC_Graphics_render(graphics);
+          break;
+        default:
+          break;
+      }
+      break;
+    case PG_INTRO:
+      window_stack_pop(true);
       break;
     default:
       break;

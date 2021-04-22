@@ -64,6 +64,16 @@
           "type": "raw",
           "name": "DATA_POKEMON_MENU_TILESHEET",
           "file": "data/PokemonMenuTilesheet.bin"
+        },
+        {
+          "type": "raw",
+          "name": "DATA_POKEMON_DIALOGUE_DATA",
+          "file": "data/PokemonDialogue_data.bin"
+        },
+        {
+          "type": "raw",
+          "name": "DATA_POKEMON_DIALOGUE_TEXT",
+          "file": "data/PokemonDialogue_text.bin"
         }
       ]
     }

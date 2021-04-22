@@ -465,7 +465,32 @@ def convert_sprites(base_folder):
         os.makedirs(base_folder + "Output/")
     convert_spritesheet_to_2bpp(base_folder + "Spritesheet.png", base_folder + "Output/Spritesheet.bin", base_folder + "Output/ConvertedSpritesheet.png")
 
+def convert_dialogue_to_bin(text_file, output_file, data_file):
+    offset = 0
+    open(output_file, 'wb').close()
+    open(data_file, 'wb').close()
+    with open(text_file, 'r') as tf:
+        line = tf.readline()
+        while line:
+            to_write = line.replace("\\n", "\n")
+            to_write += '\0'
+            output = bytes([ord(i) for i in to_write])
+            with open(output_file, 'ab') as of:
+                d_size = of.write(output)
+            b_offset = offset.to_bytes(2, 'big')
+            b_size = d_size.to_bytes(2, 'big')
+            with open(data_file, 'ab') as df:
+                df.write(b_offset)
+                df.write(b_size)
+            offset += d_size
+            line = tf.readline()
+
 if __name__ == "__main__":
     # convert_map("resources/SourceImages/Pokemon/Map/Route1/Output/")
 
-    convert_sprites("resources/SourceImages/Pokemon/PokemonSprites/")
+    # convert_sprites("resources/SourceImages/Pokemon/PokemonSprites/")
+
+    # convert_tilesheet_to_2bpp("resources/SourceImages/Pokemon/UI/MenuTilesheet.png", "resources/SourceImages/Pokemon/UI/Output/PokemonMenuTilesheet~color.bin")
+    # convert_tilesheet_to_2bpp("resources/SourceImages/Pokemon/UI/MenuTilesheet~bw.png", "resources/SourceImages/Pokemon/UI/Output/PokemonMenuTilesheet~bw.bin")
+    
+    convert_dialogue_to_bin("resources/MenuMockups/Dialogue/PokemonDialogue.txt", "resources/MenuMockups/Dialogue/PokemonDialogue_text.bin",  "resources/MenuMockups/Dialogue/PokemonDialogue_data.bin")

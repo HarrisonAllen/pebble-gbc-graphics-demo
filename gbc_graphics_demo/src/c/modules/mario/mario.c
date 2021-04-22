@@ -277,8 +277,14 @@ void Mario_initialize(GBC_Graphics *graphics, void (*next_demo_callback)()) {
 }
 
 void Mario_deinitialize(GBC_Graphics *graphics) {
-    free(s_world_map);
-    free(s_world_collision_map);
+    if (s_world_map != NULL) {
+        free(s_world_map);
+        s_world_map = NULL;
+    }
+    if (s_world_collision_map != NULL) {
+        free(s_world_collision_map);
+        s_world_collision_map = NULL;
+    }
 }
 
 static uint8_t player_collision(GBC_Graphics *graphics) {

@@ -166,6 +166,19 @@ static uint8_t s_dialogue_buffer_pos;
 static char *s_dialogue_buffer;
 */
 
+void begin_dialogue_from_string(GBC_Graphics *graphics, GRect dialogue_bounds, GPoint dialogue_root, char *dialogue) {
+  s_dialogue_buffer = (uint8_t*)malloc(strlen(dialogue)+1);
+  memcpy(s_dialogue_buffer, dialogue, strlen(dialogue)+1);
+
+  s_dialogue_bounds = dialogue_bounds;
+  draw_menu_rectangle(graphics, dialogue_bounds);
+  s_dialogue_root = dialogue_root;
+  s_dialogue_x = dialogue_root.x;
+  s_dialogue_y = dialogue_root.y;
+  s_dialogue_state = D_WRITING;
+  s_dialogue_buffer_pos = 0;
+}
+
 void begin_dialogue(GBC_Graphics *graphics, GRect dialogue_bounds, GPoint dialogue_root, uint16_t dialogue_id) {
   ResHandle data_handle = resource_get_handle(RESOURCE_ID_DATA_POKEMON_DIALOGUE_DATA);
   uint8_t *data_buffer = (uint8_t*)malloc(4);
@@ -207,6 +220,7 @@ void step_dialogue(GBC_Graphics *graphics, bool select_pressed, uint8_t frame_de
             s_dialogue_state = D_WAITING;
           }
         } else if (s_dialogue_buffer[s_dialogue_buffer_pos] == '\0'){
+          s_cur_line = 0;
           s_dialogue_state = D_FINAL_WAIT;
           free(s_dialogue_buffer);
           s_dialogue_buffer = NULL;

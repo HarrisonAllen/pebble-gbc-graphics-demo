@@ -38,6 +38,7 @@ uint8_t get_cursor_pos();
 void move_cursor_down(GBC_Graphics *graphics);
 void move_cursor_up(GBC_Graphics *graphics);
 
+void begin_dialogue_from_string(GBC_Graphics *graphics, GRect dialogue_bounds, GPoint dialogue_root, char *dialogue);
 void begin_dialogue(GBC_Graphics *graphics, GRect dialogue_bounds, GPoint dialogue_root, uint16_t dialogue_id);
 DialogueState get_dialogue_state();
 void step_dialogue(GBC_Graphics *graphics, bool select_pressed, uint8_t frame_delay);

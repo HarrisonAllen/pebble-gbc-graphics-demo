@@ -410,6 +410,7 @@ def convert_tile_to_bytes(tile):
 BASE_FOLDER = "resources/SourceImages/Pokemon/Map/"
 
 def convert_map(base_folder):
+    # Run this on the manually created map
     # extract_chunks_from_map(base_folder + "../Route1.png", base_folder + "Chunks/")
     # get_unique_images(base_folder + "Chunks/", base_folder + "Chunk_Templates/")
     # extract_blocks_from_chunks(base_folder + "Chunk_Templates/", base_folder + "Blocks/")
@@ -418,19 +419,21 @@ def convert_map(base_folder):
     # get_unique_images(base_folder + "Tiles/", base_folder + "Tile_Templates/")
     # stitch_images(base_folder + "Tile_Templates/", base_folder + "Route1Tilesheet.png")
 
-    # if not os.path.exists(base_folder + "Output/"):
-    #     os.makedirs(base_folder + "Output/")
-
+    if not os.path.exists(base_folder + "Output/"):
+        os.makedirs(base_folder + "Output/")
+    
+    # Then create and populate the "Block_Collision" folder
+    # Also make sure that "../BG_Palettes.png" has been generated at this point
     # convert_map_to_chunks(base_folder + "../Route1.png", base_folder + "Chunk_Templates/", base_folder + "Output/Route1.bin")
     # convert_chunks_to_blocks(base_folder + "Chunk_Templates/", base_folder + "Block_Templates/", base_folder + "Output/Chunks.txt")
     # convert_blocks_to_tiles(base_folder + "Block_Templates/", base_folder + "Tile_Templates/", base_folder + "Output/Blocks.txt")
     # convert_tiles_to_palettes(base_folder + "Tile_Templates/", base_folder + "../BG_Palettes.png", base_folder + "Output/Tile_Palettes.txt")
-    # convert_paletted_tilesheet_to_2bpp(base_folder + "Route1Tilesheet.png", base_folder + "../BG_Palettes.png", base_folder + "Output/Pokemon_Tilesheet.bin")
+    convert_paletted_tilesheet_to_2bpp(base_folder + "Route1Tilesheet.png", base_folder + "../BG_Palettes.png", base_folder + "Output/PokemonTilesheet~color.bin")
     # convert_palettes_to_commands(base_folder + "../BG_Palettes.png", base_folder + "Output/BG_Palette_Commands.txt")
     # convert_blocks_to_collision(base_folder + "Block_Templates/", base_folder + "../Block_Collision/", base_folder + "Output/Block_Collision.txt")
     
     # For BW, I generated a 1 bit, Floyd-Steinberg dithered image of the route, and manually copied the corresponding tiles to a tilesheet
-    # convert_tilesheet_to_2bpp(base_folder + "Route1Tilesheet~bw.png", base_folder + "Route1Tilesheet~bw.bin")
+    convert_tilesheet_to_2bpp(base_folder + "Route1Tilesheet~bw.png", base_folder + "Output/PokemonTilesheet~bw.bin")
     return
 
 
@@ -465,6 +468,8 @@ def convert_sprites(base_folder):
         os.makedirs(base_folder + "Output/")
     convert_spritesheet_to_2bpp(base_folder + "Spritesheet.png", base_folder + "Output/Spritesheet.bin", base_folder + "Output/ConvertedSpritesheet.png")
 
+MAX_LEN = 16
+
 def convert_dialogue_to_bin(text_file, output_file, data_file):
     offset = 0
     open(output_file, 'wb').close()
@@ -472,11 +477,22 @@ def convert_dialogue_to_bin(text_file, output_file, data_file):
     with open(text_file, 'r') as tf:
         line = tf.readline()
         while line:
-            to_write = line.replace("\\n", "\n")
-            to_write += '\0'
-            output = bytes([ord(i) for i in to_write])
+            words = line.replace("\\n", "\n").split(' ')
+            temp = ''
+            d_size = 0
+            for w in words:
+                if len(temp + w) >= MAX_LEN:
+                    temp = temp.strip() + '\n'
+                    output = bytes([ord(i) for i in temp])
+                    with open(output_file, 'ab') as of:
+                        d_size += of.write(output)
+                    temp = ''
+                temp += w + ' '
+                    
+            temp = temp.strip() + '\0'
+            output = bytes([ord(i) for i in temp])
             with open(output_file, 'ab') as of:
-                d_size = of.write(output)
+                d_size += of.write(output)
             b_offset = offset.to_bytes(2, 'big')
             b_size = d_size.to_bytes(2, 'big')
             with open(data_file, 'ab') as df:
@@ -484,6 +500,7 @@ def convert_dialogue_to_bin(text_file, output_file, data_file):
                 df.write(b_size)
             offset += d_size
             line = tf.readline()
+
 
 if __name__ == "__main__":
     # convert_map("resources/SourceImages/Pokemon/Map/Route1/Output/")

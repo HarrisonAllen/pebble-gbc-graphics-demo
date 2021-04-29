@@ -3,6 +3,7 @@
 #include "world.h"
 #include "sprites.h"
 #include "objects.h"
+#include "sprite_decompressor/decompressor.h"
 
 typedef enum {
   D_UP,
@@ -46,6 +47,8 @@ static PokemonGameState s_game_state, s_prev_game_state;
 static void (*s_next_demo_callback)();
 static PokemonMenuState s_menu_state;
 static bool s_save_file_exists;
+static uint16_t s_pokemon_index;
+static GBC_Graphics *s_graphics;
 
 static GPoint direction_to_point(Dir dir) {
     switch (dir) {
@@ -308,7 +311,73 @@ static void load_game(GBC_Graphics *graphics) {
   GBC_Graphics_render(graphics);
 }
 
+static uint32_t combine_4_bytes(uint8_t *array) {
+  return array[0] << 24 | array[1] << 16 | array[2] << 8 | array[3];
+}
+
+static uint16_t combine_2_bytes(uint8_t *array) {
+  return array[0] << 8 | array[1];
+}
+
+static void load_pokemon(GBC_Graphics *graphics, uint16_t pokemon_number, bool front, GPoint location, uint8_t vram_tile_offset, uint8_t palette) {
+  uint8_t *pokemon_bank = GBC_Graphics_get_vram_bank(graphics, 2) + vram_tile_offset * 16;
+  ResHandle data_handle = resource_get_handle(front ? RESOURCE_ID_DATA_POKEMON_FRONT_SPRITE_DATA : RESOURCE_ID_DATA_POKEMON_BACK_SPRITE_DATA);
+  uint16_t data_offset = 6 * pokemon_number;
+  uint8_t *data_buffer = (uint8_t*)malloc(6);
+  resource_load_byte_range(data_handle, data_offset, data_buffer, 6);
+
+  uint32_t sprite_offset = combine_4_bytes(data_buffer);
+  uint16_t sprite_size = combine_2_bytes(data_buffer + 4);
+  uint32_t sprite_res = front ? RESOURCE_ID_DATA_POKEMON_FRONT_SPRITES : RESOURCE_ID_DATA_POKEMON_BACK_SPRITES;
+  load_pokemon_sprite(sprite_res, sprite_offset, sprite_size, pokemon_bank);
+  free(data_buffer);
+
+#if defined(PBL_COLOR)
+  ResHandle palette_handle = resource_get_handle(RESOURCE_ID_DATA_POKEMON_PALETTES);
+  uint16_t palette_offset = 4 * pokemon_number;
+  // TODO: Add in this palette loader, and then render the sprite
+  uint8_t *palette_buffer = (uint8_t*)malloc(4);
+  resource_load_byte_range(palette_handle, palette_offset, palette_buffer, 4);
+  GBC_Graphics_set_bg_palette(graphics, palette, 
+      palette_buffer[0], palette_buffer[2], palette_buffer[1], palette_buffer[3]); // Middle colors are mixed up in data, fix by swapping
+  // GBC_Graphics_set_bg_palette_array(graphics, palette, palette_buffer); // If they weren't messed up, just use this
+#else
+  GBC_Graphics_set_bg_palette(graphics, palette, 1, 1, 0, 0);
+#endif
+
+  uint8_t i = 0;
+  for (uint8_t x = 0; x < 7; x++) {
+    for (uint8_t y = 0; y < 7; y++) {
+      GBC_Graphics_bg_set_tile_and_attrs(graphics, location.x + x, location.y + y, i+vram_tile_offset, GBC_Graphics_attr_make(palette, 2, false, false, false));
+      i++;
+    }
+  }
+}
+
+// static uint16_t pokemon_to_render[] = {
+//   39, 40, 49, 86, 114, 121, 124, 184, 194
+// };
+
+static void tick_handler(struct tm *tick_time, TimeUnits changed) {
+
+  load_pokemon(s_graphics, s_pokemon_index % 252, s_pokemon_index > 251, GPoint(0, 0), 0, 1);
+  char buffer[4];
+  snprintf(buffer, 4, "%03d",  s_pokemon_index % 252);
+  draw_text_at_location(s_graphics, GPoint(7, 0), buffer);
+  GBC_Graphics_render(s_graphics);
+  s_pokemon_index = (s_pokemon_index + 1) % 504;
+  // uint16_t pokemon = pokemon_to_render[s_pokemon_index % sizeof(pokemon_to_render)];
+
+  // load_pokemon(s_graphics, pokemon, false, GPoint(0, 0), 0, 1);
+  // char buffer[4];
+  // snprintf(buffer, 4, "%03d", pokemon);
+  // draw_text_at_location(s_graphics, GPoint(7, 0), buffer);
+  // GBC_Graphics_render(s_graphics);
+  // s_pokemon_index = (s_pokemon_index + 1) % sizeof(pokemon_to_render);
+}
+
 void Pokemon_initialize(GBC_Graphics *graphics, Layer *background_layer, void (*next_demo_callback)()) {
+
   layer_set_update_proc(background_layer, background_update_proc);
   s_background_layer = background_layer;
   
@@ -371,6 +440,63 @@ void Pokemon_initialize(GBC_Graphics *graphics, Layer *background_layer, void (*
     draw_menu(graphics, GRect(POKEMON_START_MENU_ROOT_X, POKEMON_START_MENU_ROOT_Y, 12, 6), "NEW GAME\n\nQUIT", false);
     set_num_menu_items(2);
   }
+
+  s_graphics = graphics;
+  tick_timer_service_subscribe(SECOND_UNIT, tick_handler);
+  // load_pokemon(graphics, rand()%251+1, rand()%2, GPoint(0, 0), 0, 1);
+  // load_pokemon(graphics, rand()%251+1, rand()%2, GPoint(7, 0), 49, 2);
+  // load_pokemon(graphics, rand()%251+1, rand()%2, GPoint(0, 7), 49*2, 3);
+  // load_pokemon(graphics, rand()%251+1, rand()%2, GPoint(7, 7), 49*3, 4);
+  
+  
+// #if defined(PBL_COLOR)
+//   GBC_Graphics_set_bg_palette(graphics, 1, 0xff, 0xf4, 0xdd, 0x00);
+//   GBC_Graphics_set_bg_palette(graphics, 2, 0xff, 0xD2, 0xCB, 0xC0);
+// #else
+//   GBC_Graphics_set_bg_palette(graphics, 1, 1, 1, 0, 0);
+//   GBC_Graphics_set_bg_palette(graphics, 2, 1, 1, 0, 0);
+// #endif
+  // uint8_t *pokemon_bank = GBC_Graphics_get_vram_bank(graphics, 2);
+  // ResHandle handle = resource_get_handle(RESOURCE_ID_DATA_POKEMON_001);
+  // size_t res_size = resource_size(handle);
+  // load_pokemon_sprite(RESOURCE_ID_DATA_POKEMON_001, 0, res_size, pokemon_bank);
+  // uint8_t i = 0;
+  // for (uint8_t x = 0; x < 7; x++) {
+  //   for (uint8_t y = 0; y < 7; y++) {
+  //     GBC_Graphics_bg_set_tile_and_attrs(graphics, x, y, i, GBC_Graphics_attr_make(2, 2, false, false, false));
+  //     i++;
+  //   }
+  // }
+  // pokemon_bank += 16*49;
+  // handle = resource_get_handle(RESOURCE_ID_DATA_POKEMON_002);
+  // res_size = resource_size(handle);
+  // load_pokemon_sprite(RESOURCE_ID_DATA_POKEMON_002, 0, res_size, pokemon_bank);
+  // for (uint8_t x = 7; x < 14; x++) {
+  //   for (uint8_t y = 0; y < 7; y++) {
+  //     GBC_Graphics_bg_set_tile_and_attrs(graphics, x, y, i, GBC_Graphics_attr_make(1, 2, false, false, false));
+  //     i++;
+  //   }
+  // }
+  // pokemon_bank += 16*49;
+  // handle = resource_get_handle(RESOURCE_ID_DATA_POKEMON_003);
+  // res_size = resource_size(handle);
+  // load_pokemon_sprite(RESOURCE_ID_DATA_POKEMON_003, 0, res_size, pokemon_bank);
+  // for (uint8_t x = 0; x < 7; x++) {
+  //   for (uint8_t y = 7; y < 14; y++) {
+  //     GBC_Graphics_bg_set_tile_and_attrs(graphics, x, y, i, GBC_Graphics_attr_make(1, 2, false, false, false));
+  //     i++;
+  //   }
+  // }
+  // pokemon_bank += 16*49;
+  // handle = resource_get_handle(RESOURCE_ID_DATA_POKEMON_004);
+  // res_size = resource_size(handle);
+  // load_pokemon_sprite(RESOURCE_ID_DATA_POKEMON_004, 0, res_size, pokemon_bank);
+  // for (uint8_t x = 7; x < 14; x++) {
+  //   for (uint8_t y = 7; y < 14; y++) {
+  //     GBC_Graphics_bg_set_tile_and_attrs(graphics, x, y, i, GBC_Graphics_attr_make(1, 2, false, false, false));
+  //     i++;
+  //   }
+  // }
 
   GBC_Graphics_render(graphics);
 

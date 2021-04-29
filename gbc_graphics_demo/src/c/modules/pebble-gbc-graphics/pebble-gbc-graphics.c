@@ -121,6 +121,10 @@ void GBC_Graphics_load_from_tilesheet_into_vram(GBC_Graphics *self, uint32_t til
   resource_load_byte_range(tilesheet_handle, tilesheet_tile_offset * TILE_SIZE, vram_offset, tiles_to_load * TILE_SIZE);
 }
 
+uint8_t *GBC_Graphics_get_vram_bank(GBC_Graphics *self, uint8_t vram_bank_number) {
+  return &self->vram[vram_bank_number * VRAM_BANK_SIZE];
+}
+
 /**
  * Sets the colors of a palette in the given palette bank
  * 
@@ -145,6 +149,26 @@ void GBC_Graphics_set_bg_palette(GBC_Graphics *self, uint8_t palette_num, uint8_
 void GBC_Graphics_set_sprite_palette(GBC_Graphics *self, uint8_t palette_num, uint8_t c0, uint8_t c1, uint8_t c2, uint8_t c3) {
   set_palette(self->sprite_palette_bank, palette_num, c0, c1, c2, c3);
 }
+
+/**
+ * Sets the colors of a palette in the given palette bank
+ * 
+ * @param palette_bank A pointer to the palette bank
+ * @param palette_num The number of the palette to set, 0 to 7
+ * @param palette_array A pointer to a 4-byte array containing the palette colors
+ */
+static void set_palette_array(uint8_t *palette_bank, uint8_t palette_num, uint8_t *palette_array) {
+  memcpy(&palette_bank[palette_num*PALETTE_SIZE], palette_array, 4);
+}
+
+void GBC_Graphics_set_bg_palette_array(GBC_Graphics *self, uint8_t palette_num, uint8_t *palette_array) {
+  set_palette_array(self->bg_palette_bank, palette_num, palette_array);
+}
+
+void GBC_Graphics_set_sprite_palette_array(GBC_Graphics *self, uint8_t palette_num, uint8_t *palette_array) {
+  set_palette_array(self->sprite_palette_bank, palette_num, palette_array);
+}
+
 
 /**
  * Clamps a short variable between two uint8_t values

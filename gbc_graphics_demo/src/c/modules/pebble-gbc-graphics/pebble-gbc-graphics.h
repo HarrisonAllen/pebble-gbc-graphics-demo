@@ -334,6 +334,15 @@ void GBC_Graphics_load_from_tilesheet_into_vram(GBC_Graphics *self, uint32_t til
                                             uint16_t tiles_to_load, uint16_t vram_tile_offset, uint8_t vram_bank_number);
 
 /**
+ * Returns a pointer to the requested VRAM bank
+ * 
+ * @param self A pointer to the target GBC Graphics object
+ * @param vram_bank_number The VRAM bank to return, 0 to 3
+ * @return A VRAM bank
+ */
+uint8_t *GBC_Graphics_get_vram_bank(GBC_Graphics *self, uint8_t vram_bank_number);
+
+/**
  * Sets the four colors of one of the background palettes
  * 
  * @param self A pointer to the target GBC Graphics object
@@ -346,6 +355,15 @@ void GBC_Graphics_load_from_tilesheet_into_vram(GBC_Graphics *self, uint32_t til
 void GBC_Graphics_set_bg_palette(GBC_Graphics *self, uint8_t palette_num, uint8_t c0, uint8_t c1, uint8_t c2, uint8_t c3);
 
 /**
+ * Sets the four colors of one of the background palettes from an array
+ * 
+ * @param self A pointer to the target GBC Graphics object
+ * @param palette_num The number of the palette to set, from 0 to 8
+ * @param palette_array A pointer to a 4-byte array containing the palette colors
+ */
+void GBC_Graphics_set_bg_palette_array(GBC_Graphics *self, uint8_t palette_num, uint8_t *palette_array);
+
+/**
  * Sets the four colors of one of the sprite palettes
  * 
  * @param self A pointer to the target GBC Graphics object
@@ -356,6 +374,15 @@ void GBC_Graphics_set_bg_palette(GBC_Graphics *self, uint8_t palette_num, uint8_
  * @param c3 The 3rd color of the new palette
  */
 void GBC_Graphics_set_sprite_palette(GBC_Graphics *self, uint8_t palette_num, uint8_t c0, uint8_t c1, uint8_t c2, uint8_t c3);
+
+/**
+ * Sets the four colors of one of the sprite palettes from an array
+ * 
+ * @param self A pointer to the target GBC Graphics object
+ * @param palette_num The number of the palette to set, from 0 to 8
+ * @param palette_array A pointer to a 4-byte array containing the palette colors
+ */
+void GBC_Graphics_set_sprite_palette_array(GBC_Graphics *self, uint8_t palette_num, uint8_t *palette_array);
 
 /**
  * Renders the background, window, and sprite layers at the next available opportunity

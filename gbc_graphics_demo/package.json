@@ -74,6 +74,35 @@
           "type": "raw",
           "name": "DATA_POKEMON_DIALOGUE_TEXT",
           "file": "data/PokemonDialogue_text.bin"
+        },
+        {
+          "type": "raw",
+          "name": "DATA_POKEMON_FRONT_SPRITES",
+          "file": "data/PokemonFrontSprites.bin"
+        },
+        {
+          "type": "raw",
+          "name": "DATA_POKEMON_FRONT_SPRITE_DATA",
+          "file": "data/PokemonFrontSpriteData.bin"
+        },
+        {
+          "type": "raw",
+          "name": "DATA_POKEMON_BACK_SPRITES",
+          "file": "data/PokemonBackSprites.bin"
+        },
+        {
+          "type": "raw",
+          "name": "DATA_POKEMON_BACK_SPRITE_DATA",
+          "file": "data/PokemonBackSpriteData.bin"
+        },
+        {
+          "type": "raw",
+          "name": "DATA_POKEMON_PALETTES",
+          "file": "data/PokemonPalettes.bin",
+          "targetPlatforms": [
+            "basalt",
+            "chalk"
+          ]
         }
       ]
     }

@@ -1,0 +1,139 @@
+POKEMON GRAPHICS COMPRESSION DOCUMENT
+Version 1.0
+
+-Pokemon uses a unique compression routine to pack all of those 251
+pokemon into a single game boy cartridge. Here's my documentation of this
+compression:
+
+
+
+Look at the first (high) 3 bits of the first byte -
+ (Bitwise AND with 224 - 0xE0, binary 11100000).
+ The value in these high 3 bits are a 'control code' for the processing of
+ the following information.
+ There are 7 possible control codes:
+ In binary, 000, 001, 010, 011, 100, 101, 111.
+ Keeping the extra 5 bits as zeroes, this gives us the seven hex values of
+ 00, 20, 40, 60, 80, A0, C0 and E0 as control codes.
+Look at the last(low) 5 bits of the first byte -
+ (Bitwise AND with 31 - 0X1F, binary 00011111), call that value x.
+
+00: Read (x + 1) following amount of bytes from the ROM and print to the
+ graphics output.
+
+20: Read one byte from the ROM, call that value y. Print value (y),
+ (x+1) number of times to the graphics output.
+
+40: Read two bytes from the ROM, call those values (y-z).
+ Print y and z alternately (x+1) number of times total to the graphics
+ output. Example: If x = 5, print yzyzy.
+
+60: Print (x+1) bytes with value zero to the graphics output.
+
+
+***The control bytes 80, A0 and C0 deal with values already stored in the
+ graphics output, as a way of 'reusing' data to save space.***
+
+
+
+80: Read a byte from the rom, call that value A.
+If the high bit of A (Bitwise AND with 128 - 0x80, binary 10000000) is clear:
+Read the next byte from the rom, call that value N.
+Copy (x+1) consecutive bytes from the graphics buffer to the graphics output,
+ starting at (A*0x100) + (N+1).
+
+If the high bit of A is set:
+(AND A with 127(0x7F) to clear the high bit)
+Copy (x+1) consecutive bytes from the graphics buffer to the graphics output,
+ starting A bytes back from the end of the buffer.
+
+A0: Read a byte from the rom, call that value A.
+If the high bit of A is clear:
+Read the next byte from the rom, call that value N.
+Copy (x+1) consecutive bytes from the graphics buffer to the graphics output,
+ starting at (A*0x100) + (N+1), REVERSING the bit order.
+ Example: Byte k in graphics buffer = 0xD7 (11010111 binary).
+ New byte to be printed to graphics output = 0xEB(11101011 binary).
+
+If the high bit of A is set:
+(clear the high bit of A)
+Copy (x+1) consecutive bytes from the graphics buffer to the graphics output,
+ starting A bytes back from the end of the buffer, REVERSING the bit order.
+
+
+C0: Read a byte from the rom, call that value A.
+If the high bit of A is clear:
+Read the next byte from the rom, call that value N.
+Copy (x+1) reverse consecutive bytes from the graphics buffer to the graphics
+ output, starting at (A*0x100) + (N+1).
+ "reverse consecutive" meaning starting from the above point in the graphics
+ buffer, read a byte from buffer and print to the end of the output,
+ then read the previous byte and print to the end of the output, etc.
+
+If the high bit of A is set:
+(clear the high bit of A)
+Copy (x+1) reverse consecutive bytes from the graphics buffer to the graphics
+ output, starting A bytes back from the end of the buffer.
+
+
+E0: The E0 control code is special:
+
+Take the high 3 bits of x (remember, x is currently the low 5 bits of the
+ first byte, so AND that byte with (28decimal/0x1C/00011100 binary),
+ this will be the new 3-bit control code.
+Get another byte from the ROM, call it w.
+ The new X value consists of (the lowest two bits of the old x
+ (AND with 03, 00000011 binary) * 0x100) + w.
+Go back to the top of the loop with the new control code and x value.
+
+
+That's the compression!
+
+Here are some addresses that might be handy:
+(NOTE: UNOWN, pokemon # 201 has its graphics stored in some special
+ manner (most likely because there are 26 separate images),
+ thus its pointer points to nothing. I've simply skipped UNOWN #201
+ in my program, but if someone else wants to look for him, go ahead and let
+ me know and i'll update this doc.)
+
+0x48000 - start of Pokemon graphics pointers - 6 bytes per pokemon.
+ First three bytes is pointer to the pokemon facing you,
+ next three is pointer to the pokemon with its back facing you.
+ Here is the layout of the 3 pointer bytes:
+
+1st byte: Bank byte. Byte * 4000h to get the bank address. However:
+If 1st byte = 0x13 then change it to 0x1F
+If 1st byte = 0x14 then change it to 0x20
+If 1st byte = 0x1F then change it to 0x2E
+Don't ask why; it's simply in the game's code.
+
+2nd byte: Low byte of address.
+3rd byte: High byte of address.
+
+To correctly calculate the ROM address of the start of the graphics data
+ using the 3-byte pointer:
+Address = (byte 1) * 0x4000 + (byte 3) * 0x100 + (byte 2)
+
+
+0xAD3D - Start of Palette data. 8 bytes for each pokemon.
+ 2 color schemes for each pokemon, first 4 bytes = normal color scheme,
+ next 4 bytes = "shiny" pokemon color scheme.
+
+Each pokemon has four colors: white(color 0), black(color 3), and two colors
+ defined by the 4 palette bytes(1 and 2), 2 bytes per color.
+ The bytes use RGB. First, rearrange the two bytes so the second byte is
+ first (common 16-bit practice). The RGB arrangement is as follows for the
+ 16-bit pair:
+0bbbbbgggggrrrrr, each color attribute having five bytes,
+ and the high bit unused.
+
+That's it!
+My QBasic program uses all of the information above to decompress
+Pokemon images from the ROM and output them to the screen.
+Check out the source for further clarification QBasic-style.
+
+-necrosaro (radimvice@geocities.com)
+http://members.aol.com/sabindude/pokemon.html
+-For an archive of all 251 pokemon from Gold and Silver, shiny and regular,
+ facing fowards and backwards, in PNG format, go to
+http://www.geocities.com/radimvice/pokepng.zip

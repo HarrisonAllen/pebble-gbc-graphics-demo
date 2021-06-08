@@ -1,0 +1,21 @@
+{
+    "configurations": [
+        {
+            "name": "Pebble SDK (Basalt)",
+            "includePath": [
+                "${workspaceFolder}/**",
+                "/home/linksky/.pebble-sdk/SDKs/4.3/sdk-core/pebble/basalt/include"
+            ],
+            "defines": [
+                "_DEBUG",
+                "UNICODE",
+                "_UNICODE"
+            ],
+            "compilerPath": "/home/linksky/pebble-dev/pebble-sdk-4.5-linux64/arm-cs-tools/bin/arm-none-eabi-gcc",
+            "cStandard": "gnu11",
+            "cppStandard": "gnu++11",
+            "intelliSenseMode": "gcc-arm"
+        }
+    ],
+    "version": 4
+}

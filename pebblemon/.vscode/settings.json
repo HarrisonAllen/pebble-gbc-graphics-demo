@@ -1,0 +1,10 @@
+{
+    "files.associations": {
+        "mario.h": "c",
+        "pebble.h": "c",
+        "pokemon.h": "c",
+        "main_window.h": "c",
+        "cstdlib": "c",
+        "pebble-gbc-graphics.h": "c"
+    }
+}

@@ -217,6 +217,7 @@ static void frame_timer_handle(void* context) {
     default:
       break;
   }
+  GBC_Graphics_render(s_graphics);
 
   s_frame_counter++;
 

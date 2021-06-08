@@ -131,7 +131,6 @@ static void zip_bit_planes(uint8_t *buffer) {
 }
 
 void load_pokemon_sprite(uint32_t resource_id, uint32_t data_start, uint16_t data_size, uint8_t *dest_buffer) {
-    // TODO: Something funky is going on and corrupting the data as it's read, maybe some memory isn't getting cleared, bit reader's not working, who knows
     BitReader_init(resource_id, data_start, data_size);
     uint8_t width = s_read(4);
     uint8_t height = s_read(4); 

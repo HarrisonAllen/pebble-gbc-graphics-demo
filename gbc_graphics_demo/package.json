@@ -103,6 +103,11 @@
             "basalt",
             "chalk"
           ]
+        },
+        {
+          "type": "raw",
+          "name": "DATA_POKEMON_NAMES",
+          "file": "data/PokemonNames.bin"
         }
       ]
     }

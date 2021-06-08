@@ -2,6 +2,12 @@
 
 #include <pebble.h>  ///> Pebble SDK symbols
 
+/**
+ * Version 1.0.0 of pebble-gbc-graphics
+ * Created by Harrison Allen
+ * Read more on GitHub here: [link]
+ */
+
 /** Size definitions */
 #define TILE_WIDTH 8  ///> Width of a tile in pixels
 #define TILE_HEIGHT 8 ///> Height of a tile in pixels
@@ -80,8 +86,10 @@
 #define STAT_READ_ONLY_MASK 0x0F     ///> Mask for the read only bits of STAT
 #define STAT_WRITEABLE_MASK 0xF0     ///> Mask for the writeable bits of STAT
 
-#define MIN(x, y) (y) ^ (((x) ^ (y)) & -((x) < (y)))
-#define MAX(x, y) (x) ^ (((x) ^ (y)) & -((x) < (y)))
+/** Helpful macros */
+#define MIN(x, y) (y) ^ (((x) ^ (y)) & -((x) < (y))) ///> Finds the minimum of two values
+#define MAX(x, y) (x) ^ (((x) ^ (y)) & -((x) < (y))) ///> Finds the maximum of two values
+#define POINT_TO_OFFSET(x, y) ((x) & (MAP_WIDTH - 1)) + ((y) & (MAP_HEIGHT - 1)) * MAP_WIDTH ///> Converts an x, y point on a bg/window map to the tile/attrmap offset
 
 /** Predefined Screen boundaries for convenience*/
 #if defined(PBL_ROUND)
@@ -364,6 +372,23 @@ void GBC_Graphics_set_bg_palette(GBC_Graphics *self, uint8_t palette_num, uint8_
 void GBC_Graphics_set_bg_palette_array(GBC_Graphics *self, uint8_t palette_num, uint8_t *palette_array);
 
 /**
+ * Copies the specified bg palette into a target array
+ * 
+ * @param self A pointer to the target GBC Graphics object
+ * @param palette_num The number of the palette to copy
+ * @param target_array The array to copy into
+ */
+void GBC_Graphics_copy_one_bg_palette(GBC_Graphics *self, uint8_t palette_num, uint8_t *target_array);
+
+/**
+ * Copies the bg palettes into a target array
+ * 
+ * @param self A pointer to the target GBC Graphics object
+ * @param target_array The array to copy into
+ */
+void GBC_Graphics_copy_all_bg_palettes(GBC_Graphics *self, uint8_t *target_array);
+
+/**
  * Sets the four colors of one of the sprite palettes
  * 
  * @param self A pointer to the target GBC Graphics object
@@ -383,6 +408,23 @@ void GBC_Graphics_set_sprite_palette(GBC_Graphics *self, uint8_t palette_num, ui
  * @param palette_array A pointer to a 4-byte array containing the palette colors
  */
 void GBC_Graphics_set_sprite_palette_array(GBC_Graphics *self, uint8_t palette_num, uint8_t *palette_array);
+
+/**
+ * Copies the specified sprite palette into a target array
+ * 
+ * @param self A pointer to the target GBC Graphics object
+ * @param palette_num The number of the palette to copy
+ * @param target_array The array to copy into
+ */
+void GBC_Graphics_copy_one_sprite_palette(GBC_Graphics *self, uint8_t palette_num, uint8_t *target_array);
+
+/**
+ * Copies the sprite palettes into a target array
+ * 
+ * @param self A pointer to the target GBC Graphics object
+ * @param target_array The array to copy into
+ */
+void GBC_Graphics_copy_all_sprite_palettes(GBC_Graphics *self, uint8_t *target_array);
 
 /**
  * Renders the background, window, and sprite layers at the next available opportunity
@@ -779,6 +821,18 @@ void GBC_Graphics_bg_set_tile_y_flip(GBC_Graphics *self, uint8_t x, uint8_t y, b
 void GBC_Graphics_bg_set_tile_priority(GBC_Graphics *self, uint8_t x, uint8_t y, bool has_priority);
 
 /**
+ * Moves a tile from one location to another
+ * 
+ * @param self A pointer to the target GBC Graphics object
+ * @param src_x The x position of the source tile, 0 to 31
+ * @param src_y The y position of the source tile, 0 to 31
+ * @param dest_x The x position of the destination tile, 0 to 31
+ * @param dest_y The y position of the destination tile, 0 to 31
+ * @param swap If the src and dest tiles should be swapped, otherwise overrides
+ */
+void GBC_Graphics_bg_move_tile(GBC_Graphics *self, uint8_t src_x, uint8_t src_y, uint8_t dest_x, uint8_t dest_y, bool swap);
+
+/**
  * Gets the current x position of the window offset
  * 
  * @param self A pointer to the target GBC Graphics object
@@ -933,6 +987,18 @@ void GBC_Graphics_window_set_tile_y_flip(GBC_Graphics *self, uint8_t x, uint8_t 
  * @param has_priority If the tile should have priority over the sprite layer
  */
 void GBC_Graphics_window_set_tile_priority(GBC_Graphics *self, uint8_t x, uint8_t y, bool has_priority);
+
+/**
+ * Moves a tile from one location to another
+ * 
+ * @param self A pointer to the target GBC Graphics object
+ * @param src_x The x position of the source tile, 0 to 31
+ * @param src_y The y position of the source tile, 0 to 31
+ * @param dest_x The x position of the destination tile, 0 to 31
+ * @param dest_y The y position of the destination tile, 0 to 31
+ * @param swap If the src and dest tiles should be swapped, otherwise overrides
+ */
+void GBC_Graphics_window_move_tile(GBC_Graphics *self, uint8_t src_x, uint8_t src_y, uint8_t dest_x, uint8_t dest_y, bool swap);
 
 /**
  * Gets the x position of the sprite

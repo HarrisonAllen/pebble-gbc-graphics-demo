@@ -4,6 +4,8 @@ def convert_names_to_bin(input_file, output_file):
     with open(input_file, "r") as f:
         names = f.read().split('\n')
         for n in names:
+            if len(n) < 10:
+                n += '\0'
             filled = f'{n: <10}'
             output = bytes([ord(i) for i in filled])
             with open(output_file, "ab") as of:

@@ -528,7 +528,6 @@ static void play(GBC_Graphics *graphics) {
             GBC_Graphics_oam_set_sprite_pos(graphics, 1, s_player_sprite_x + 8, s_player_sprite_y + 4);
           #endif
             if (s_can_move && (rand() % WILD_ODDS == 0)) {
-              APP_LOG(APP_LOG_LEVEL_DEBUG, "Pokemon encounter time!");
               load_screen(graphics);
               s_game_state = PG_BATTLE;
               s_battle_state = PB_FLASH;
@@ -756,7 +755,6 @@ static void battle(GBC_Graphics *graphics) {
         for (uint8_t x = 0; x < 7; x++) {
           GBC_Graphics_bg_move_tile(graphics, 0+x, 5+y, 0+x, 20+y, true);
           GBC_Graphics_oam_set_sprite(graphics, x+y*7, 0*8+x*8+8 + 144, 5*8+y*8+16, y+x*7, GBC_Graphics_attr_make(1, 2, false, false, false));
-          APP_LOG(APP_LOG_LEVEL_DEBUG, "Loading tile %d at %d on %d, %d", y+x*7, x+y*7, 0*8+x*8+8, 5*8+y*8+16);
         }
       }
       ResHandle data_handle = resource_get_handle(RESOURCE_ID_DATA_POKEMON_NAMES);
@@ -764,7 +762,6 @@ static void battle(GBC_Graphics *graphics) {
       resource_load_byte_range(data_handle, data_offset, s_player_pokemon_name, 10);
       data_offset = 10 * s_enemy_pokemon;
       resource_load_byte_range(data_handle, data_offset, s_enemy_pokemon_name, 10);
-      APP_LOG(APP_LOG_LEVEL_DEBUG, "Loaded %d: %s and %d: %s", s_player_pokemon, s_player_pokemon_name, s_enemy_pokemon, s_enemy_pokemon_name);
 
       draw_menu_rectangle(graphics, DIALOGUE_BOUNDS);
 
@@ -832,7 +829,6 @@ static void battle(GBC_Graphics *graphics) {
       draw_text_at_location(graphics, GPoint(12, 8), level_text);
       char appear_dialogue[40];
       snprintf(appear_dialogue, 40, "Wild %s\nappeared!", s_enemy_pokemon_name);
-      APP_LOG(APP_LOG_LEVEL_DEBUG, "%s", appear_dialogue);
       begin_dialogue_from_string(graphics, DIALOGUE_BOUNDS, DIALOGUE_ROOT, appear_dialogue, true);
       s_prev_game_state = PG_BATTLE;
       s_game_state = PG_DIALOGUE;
@@ -841,7 +837,6 @@ static void battle(GBC_Graphics *graphics) {
     case PB_GO_POKEMON: {
       char go_dialogue[40];
       snprintf(go_dialogue, 40, "Do your best,\n%s!", s_player_pokemon_name);
-      APP_LOG(APP_LOG_LEVEL_DEBUG, "%s", go_dialogue);
       begin_dialogue_from_string(graphics, DIALOGUE_BOUNDS, DIALOGUE_ROOT, go_dialogue, true);
       s_prev_game_state = PG_BATTLE;
       s_game_state = PG_DIALOGUE;
@@ -859,9 +854,7 @@ static void battle(GBC_Graphics *graphics) {
     case PB_PLAYER_MOVE: {
       char move_dialogue[40];
       snprintf(move_dialogue, 40, "%s\nattacked!", s_player_pokemon_name);
-      APP_LOG(APP_LOG_LEVEL_DEBUG, "%s", move_dialogue);
       s_player_pokemon_damage = calculate_damage(s_player_pokemon_level, s_player_pokemon_attack, s_enemy_pokemon_defense);
-      APP_LOG(APP_LOG_LEVEL_DEBUG, "%s dealt %d damage", s_player_pokemon_name, s_player_pokemon_damage);
       s_clear_dialogue = false;
       begin_dialogue_from_string(graphics, DIALOGUE_BOUNDS, DIALOGUE_ROOT, move_dialogue, false);
       s_prev_game_state = PG_BATTLE;
@@ -901,9 +894,7 @@ static void battle(GBC_Graphics *graphics) {
     case PB_ENEMY_MOVE: {
       char move_dialogue[40];
       snprintf(move_dialogue, 40, "%s\nattacked!", s_enemy_pokemon_name);
-      APP_LOG(APP_LOG_LEVEL_DEBUG, "%s", move_dialogue);
       s_enemy_pokemon_damage = calculate_damage(s_enemy_pokemon_level, s_enemy_pokemon_attack, s_player_pokemon_defense);
-      APP_LOG(APP_LOG_LEVEL_DEBUG, "%s dealt %d damage", s_enemy_pokemon_name, s_enemy_pokemon_damage);
       s_clear_dialogue = false;
       begin_dialogue_from_string(graphics, DIALOGUE_BOUNDS, DIALOGUE_ROOT, move_dialogue, false);
       s_prev_game_state = PG_BATTLE;

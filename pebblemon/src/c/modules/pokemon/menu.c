@@ -135,19 +135,15 @@ void set_num_menu_items(uint8_t num_menu_items) {
 }
 
 void move_cursor_down(GBC_Graphics *graphics) {
-  APP_LOG(APP_LOG_LEVEL_DEBUG, "Moving cursor down from %d", s_cursor_pos);
   erase_menu_cursor(graphics);
   s_cursor_pos = (s_cursor_pos + 1) % s_num_menu_items;
   draw_menu_cursor(graphics);
-  APP_LOG(APP_LOG_LEVEL_DEBUG, "to %d", s_cursor_pos);
 }
 
 void move_cursor_up(GBC_Graphics *graphics) {
-  APP_LOG(APP_LOG_LEVEL_DEBUG, "Moving cursor up from %d", s_cursor_pos);
   erase_menu_cursor(graphics);
   s_cursor_pos = s_cursor_pos == 0 ? s_num_menu_items - 1 : s_cursor_pos - 1;
   draw_menu_cursor(graphics);
-  APP_LOG(APP_LOG_LEVEL_DEBUG, "to %d", s_cursor_pos);
 }
 
 void begin_dialogue_from_string(GBC_Graphics *graphics, GRect dialogue_bounds, GPoint dialogue_root, char *dialogue, bool wait) {
@@ -287,7 +283,6 @@ void draw_enemy_battle_frame(GBC_Graphics *graphics) {
 
 void draw_player_battle_frame(GBC_Graphics *graphics) {
   GPoint root = GPoint(7, 7);
-  APP_LOG(APP_LOG_LEVEL_DEBUG, "Player battle frame");
 #if defined(PBL_COLOR)
   GBC_Graphics_set_bg_palette(graphics, 3, 0b11111111, 0b11111110, 0b11000000, 0b11000000);
 #else
@@ -309,7 +304,6 @@ void draw_player_battle_frame(GBC_Graphics *graphics) {
 }
 
 void draw_battle_frames(GBC_Graphics *graphics) {
-  APP_LOG(APP_LOG_LEVEL_DEBUG, "Both frames");
   draw_enemy_battle_frame(graphics);
   draw_player_battle_frame(graphics);
 }

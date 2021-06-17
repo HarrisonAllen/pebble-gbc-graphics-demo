@@ -53,7 +53,7 @@ def extract_tiles_from_blocks(source_folder, dest_folder):
                             tile_root[0] + TILE_SIZE, tile_root[1] + TILE_SIZE)
                 tile = source_image.crop(tile_bounds)
 
-                tile.save(os.path.join(dest_folder, f'{format(i, "02")},({x_tile},{y_tile}).png')) 
+                tile.save(os.path.join(dest_folder, f'{format(i, "03")},({x_tile},{y_tile}).png')) 
         i += 1
         
 def extract_blocks_from_chunks(source_folder, dest_folder):
@@ -80,7 +80,7 @@ def extract_blocks_from_chunks(source_folder, dest_folder):
                             block_root[0] + BLOCK_SIZE, block_root[1] + BLOCK_SIZE)
                 block = source_image.crop(block_bounds)
 
-                block.save(os.path.join(dest_folder, f'{format(i, "02")},({x_block},{y_block}).png')) 
+                block.save(os.path.join(dest_folder, f'{format(i, "03")},({x_block},{y_block}).png')) 
         i += 1
 
 def get_unique_images(source_folder, dest_folder):
@@ -103,7 +103,7 @@ def get_unique_images(source_folder, dest_folder):
                 is_unique = False
                 break
         if is_unique:
-            source_image.save(os.path.join(dest_folder, f'{format(i, "02")}.png'))
+            source_image.save(os.path.join(dest_folder, f'{format(i, "03")}.png'))
             i += 1
 
 def stitch_images(source_folder, dest_file):
@@ -257,7 +257,7 @@ def convert_blocks_to_palettes(block_folder, palette_file, output_file):
                             found_palette = True
                             break
                     if not found_palette:
-                        print(f"Couldn't find palette {tile_palette} at ({x_tile}, {y_tile})")
+                        print(f"Couldn't find palette {tile_palette} at ({x_tile}, {y_tile}) (b2p)")
             f_out.write(f'}},\n')
         f_out.write('};')
 
@@ -289,7 +289,7 @@ def convert_tiles_to_palettes(tile_folder, palette_file, output_file):
                     found_palette = True
                     break
             if not found_palette:
-                print(f"Couldn't find palette {tile_palette} on {t}")
+                print(f"Couldn't find palette {tile_palette} on {t} (t2p)")
         f_out.write('};')
 
 def convert_paletted_tilesheet_to_2bpp(tilesheet_file, palette_file, output_file):
@@ -333,7 +333,7 @@ def convert_paletted_tilesheet_to_2bpp(tilesheet_file, palette_file, output_file
                         found_palette = True
                         break
                 if not found_palette:
-                    print(f"Couldn't find palette {tile_palette} at ({x_tile}, {y_tile})")
+                    print(f"Couldn't find palette {tile_palette} at ({x_tile}, {y_tile}) (pt22bpp)")
 
 def convert_palettes_to_commands(palette_file, output_file):
     palette_image = Image.open(palette_file)
@@ -366,16 +366,19 @@ def is_image_in_folder(image, folder):
 def convert_blocks_to_collision(source_folder, collision_folder, output_file):
     with open(output_file, 'w') as f_out:
         f_out.write('{\n')
-
+        # print(f'searching in {collision_folder}')
         source_images = glob.iglob(os.path.join(source_folder, '*'))
         for s in source_images:
             source_image = Image.open(s)
 
             collision_folders = glob.iglob(os.path.join(collision_folder, '*'))
+            # print(f'Block {os.path.basename(s)}')
             for f in collision_folders:
                 if is_image_in_folder(source_image, f):
                     f_out.write(f'\t{os.path.basename(f)},\n')
+                    # print(f'\tfound {os.path.basename(f)}')
                     break
+                # print(f'\tnot found {os.path.basename(f)}')
         f_out.write('};')
 
 def convert_tilesheet_to_2bpp(sheet_filename, out_filename):
@@ -409,31 +412,36 @@ def convert_tile_to_bytes(tile):
 
 BASE_FOLDER = "resources/SourceImages/Pokemon/Map/"
 
-def convert_map(base_folder):
-    # Run this on the manually created map
-    # extract_chunks_from_map(base_folder + "../Route1.png", base_folder + "Chunks/")
-    # get_unique_images(base_folder + "Chunks/", base_folder + "Chunk_Templates/")
-    # extract_blocks_from_chunks(base_folder + "Chunk_Templates/", base_folder + "Blocks/")
-    # get_unique_images(base_folder + "Blocks/", base_folder + "Block_Templates/")
-    # extract_tiles_from_blocks(base_folder + "Block_Templates/", base_folder + "Tiles/")
-    # get_unique_images(base_folder + "Tiles/", base_folder + "Tile_Templates/")
-    # stitch_images(base_folder + "Tile_Templates/", base_folder + "Route1Tilesheet.png")
-
-    if not os.path.exists(base_folder + "Output/"):
-        os.makedirs(base_folder + "Output/")
-    
-    # Then create and populate the "Block_Collision" folder
-    # Also make sure that "../BG_Palettes.png" has been generated at this point
-    # convert_map_to_chunks(base_folder + "../Route1.png", base_folder + "Chunk_Templates/", base_folder + "Output/Route1.bin")
-    # convert_chunks_to_blocks(base_folder + "Chunk_Templates/", base_folder + "Block_Templates/", base_folder + "Output/Chunks.txt")
-    # convert_blocks_to_tiles(base_folder + "Block_Templates/", base_folder + "Tile_Templates/", base_folder + "Output/Blocks.txt")
-    # convert_tiles_to_palettes(base_folder + "Tile_Templates/", base_folder + "../BG_Palettes.png", base_folder + "Output/Tile_Palettes.txt")
-    convert_paletted_tilesheet_to_2bpp(base_folder + "Route1Tilesheet.png", base_folder + "../BG_Palettes.png", base_folder + "Output/PokemonTilesheet~color.bin")
-    # convert_palettes_to_commands(base_folder + "../BG_Palettes.png", base_folder + "Output/BG_Palette_Commands.txt")
-    # convert_blocks_to_collision(base_folder + "Block_Templates/", base_folder + "../Block_Collision/", base_folder + "Output/Block_Collision.txt")
-    
-    # For BW, I generated a 1 bit, Floyd-Steinberg dithered image of the route, and manually copied the corresponding tiles to a tilesheet
-    convert_tilesheet_to_2bpp(base_folder + "Route1Tilesheet~bw.png", base_folder + "Output/PokemonTilesheet~bw.bin")
+def convert_map(base_folder, name, to_do):
+    if to_do == "extract":
+        # Run this on the manually created map
+        extract_chunks_from_map(base_folder + f"../{name}.png", base_folder + "Chunks/")
+        get_unique_images(base_folder + "Chunks/", base_folder + "Chunk_Templates/")
+        extract_blocks_from_chunks(base_folder + "Chunk_Templates/", base_folder + "Blocks/")
+        get_unique_images(base_folder + "Blocks/", base_folder + "Block_Templates/")
+        extract_tiles_from_blocks(base_folder + "Block_Templates/", base_folder + "Tiles/")
+        get_unique_images(base_folder + "Tiles/", base_folder + "Tile_Templates/")
+        # stitch_images(base_folder + "Tile_Templates/", base_folder + f"{name}Tilesheet.png")
+    elif to_do == "convert":
+        # Manually create "../BG_Palettes.png"
+        # Manually create the "Block_Collision" folder with subfolders of numbers
+        if not os.path.exists(base_folder + "Output/"):
+            os.makedirs(base_folder + "Output/")
+        
+        # Then create and populate the "../Block_Collision" folder
+        # Also make sure that "../BG_Palettes.png" has been generated at this point
+        convert_map_to_chunks(base_folder + f"../{name}.png", base_folder + "Chunk_Templates/", base_folder + f"Output/{name}.bin")
+        convert_chunks_to_blocks(base_folder + "Chunk_Templates/", base_folder + "Block_Templates/", base_folder + "Output/Chunks.txt")
+        convert_blocks_to_tiles(base_folder + "Block_Templates/", base_folder + "Tile_Templates/", base_folder + "Output/Blocks.txt")
+        convert_tiles_to_palettes(base_folder + "Tile_Templates/", base_folder + "../BG_Palettes.png", base_folder + "Output/Tile_Palettes.txt")
+        # convert_paletted_tilesheet_to_2bpp(base_folder + f"{name}Tilesheet.png", base_folder + "../BG_Palettes.png", base_folder + "Output/PokemonTilesheet~color.bin")
+        convert_palettes_to_commands(base_folder + "../BG_Palettes.png", base_folder + "Output/BG_Palette_Commands.txt")
+        convert_blocks_to_collision(base_folder + "Block_Templates/", base_folder + "../Block_Collision/", base_folder + "Output/Block_Collision.txt")
+    elif to_do == "b&w":
+        # For BW, I generated a 1 bit, Floyd-Steinberg dithered image of the route, and manually copied the corresponding tiles to a tilesheet
+        # Actually, the most recent time I did a flat conversion to 1-bit, no dithering. Some minor manual editing. Looks cleaner
+        # Gotta use that 2bpp palette (black, light grey, dark grey, white)
+        convert_tilesheet_to_2bpp(base_folder + f"{name}Tilesheet~bw.png", base_folder + "Output/PokemonTilesheet~bw.bin")
     return
 
 
@@ -501,13 +509,39 @@ def convert_dialogue_to_bin(text_file, output_file, data_file):
             offset += d_size
             line = tf.readline()
 
+def convert_binary_to_img(input_file, output_file):
+    pass
+
+def convert_tilesheet_helper(base_folder, name):
+    convert_paletted_tilesheet_to_2bpp(base_folder + f"{name}Tilesheet.png", base_folder + "../BG_Palettes.png", base_folder + "Output/Tilesheet~color.bin")
+
+def convert_2bpp_tilesheet_helper(base_folder, name):
+    convert_tilesheet_to_2bpp(base_folder + f"{name}.png", base_folder + f"{name}.bin")
 
 if __name__ == "__main__":
-    # convert_map("resources/SourceImages/Pokemon/Map/Route1/Output/")
+    # convert_map("resources/SourceImages/Pokemon/Map/Routes/Route1/Output/", "Route1", "extract") #might not work anymore b/c filenames lol
+    # convert_map("resources/SourceImages/Pokemon/Map/Routes/Route1/Output/", "Route1", "convert")
+    # convert_map("resources/SourceImages/Pokemon/Map/Routes/Route1/Output/", "Route1", "b&w")
+    # convert_map("resources/SourceImages/Pokemon/Map/Routes/NationalPark/Output/", "NationalPark", "extract")
+    # convert_map("resources/SourceImages/Pokemon/Map/Routes/NationalPark/Output/", "NationalPark", "convert")
+    # convert_map("resources/SourceImages/Pokemon/Map/Routes/NationalPark/Output/", "NationalPark", "b&w")
+
+    # convert_map("resources/SourceImages/Pokemon/Map/Routes/World/Output/", "World", "extract")
+    routes = ['Route1', 'Route2', 'Cave', 'Forest', 'NationalPark']
+    for route in routes:
+        print(f'Converting {route}...')
+        convert_map(f'resources/SourceImages/Pokemon/Map/Routes/{route}/Output/', route, 'extract')
+        convert_map(f'resources/SourceImages/Pokemon/Map/Routes/{route}/Output/', route, 'convert')
+        print(f'Conversion complete!')
+    # convert_tilesheet_helper("resources/SourceImages/Pokemon/Map/Routes/World/Output/", "World")
+    # convert_2bpp_tilesheet_helper("resources/SourceImages/Pokemon/Map/Routes/AnimationTiles/", "AnimationTilesheet")
+    # convert_2bpp_tilesheet_helper("resources/SourceImages/Pokemon/Map/Routes/AnimationTiles/", "AnimationTilesheet~bw")
+    # convert_2bpp_tilesheet_helper("resources/SourceImages/Pokemon/Map/Routes/World/", "WorldTilesheet~bw")
+
 
     # convert_sprites("resources/SourceImages/Pokemon/PokemonSprites/")
 
-    convert_tilesheet_to_2bpp("resources/SourceImages/Pokemon/UI/MenuTilesheet.png", "resources/SourceImages/Pokemon/UI/Output/PokemonMenuTilesheet~color.bin")
-    convert_tilesheet_to_2bpp("resources/SourceImages/Pokemon/UI/MenuTilesheet~bw.png", "resources/SourceImages/Pokemon/UI/Output/PokemonMenuTilesheet~bw.bin")
+    # convert_tilesheet_to_2bpp("resources/SourceImages/Pokemon/UI/MenuTilesheet.png", "resources/SourceImages/Pokemon/UI/Output/PokemonMenuTilesheet~color.bin")
+    # convert_tilesheet_to_2bpp("resources/SourceImages/Pokemon/UI/MenuTilesheet~bw.png", "resources/SourceImages/Pokemon/UI/Output/PokemonMenuTilesheet~bw.bin")
     
     # convert_dialogue_to_bin("resources/MenuMockups/Dialogue/PokemonDialogue.txt", "resources/MenuMockups/Dialogue/PokemonDialogue_text.bin",  "resources/MenuMockups/Dialogue/PokemonDialogue_data.bin")

@@ -162,14 +162,14 @@ void begin_dialogue_from_string(GBC_Graphics *graphics, GRect dialogue_bounds, G
 }
 
 void begin_dialogue(GBC_Graphics *graphics, GRect dialogue_bounds, GPoint dialogue_root, uint16_t dialogue_id, bool wait) {
-  ResHandle data_handle = resource_get_handle(RESOURCE_ID_DATA_POKEMON_DIALOGUE_DATA);
+  ResHandle data_handle = resource_get_handle(RESOURCE_ID_DATA_DIALOGUE_DATA);
   uint8_t *data_buffer = (uint8_t*)malloc(4);
   resource_load_byte_range(data_handle, dialogue_id * 4, data_buffer, 4);
   uint16_t text_offset = (data_buffer[0] << 8) | data_buffer[1];
   uint16_t text_size = (data_buffer[2] << 8) | data_buffer[3];
   free(data_buffer);
 
-  ResHandle text_handle = resource_get_handle(RESOURCE_ID_DATA_POKEMON_DIALOGUE_TEXT);
+  ResHandle text_handle = resource_get_handle(RESOURCE_ID_DATA_DIALOGUE_TEXT);
   unload_dialogue();
   s_dialogue_buffer = (uint8_t*)malloc(text_size);
   resource_load_byte_range(text_handle, text_offset, s_dialogue_buffer, text_size);

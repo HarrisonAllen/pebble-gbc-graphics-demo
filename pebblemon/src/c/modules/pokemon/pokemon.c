@@ -6,7 +6,7 @@
 #include "sprite_decompressor/decompressor.h"
 #include "enums.h"
 
-static Dir s_player_direction;
+static PlayerDirection s_player_direction = D_DOWN;
 static PlayerMode s_player_mode;
 static uint8_t s_walk_frame, s_poll_frame, s_battle_frame;
 static bool s_select_pressed, s_flip_walk;
@@ -16,7 +16,7 @@ static uint8_t *s_world_map;
 static uint16_t s_player_x, s_player_y;
 static uint8_t s_player_sprite_x, s_player_sprite_y;
 static Layer *s_background_layer;
-static const uint8_t *s_player_palette;
+static uint8_t *s_player_palette;
 static PokemonGameState s_game_state, s_prev_game_state;
 static PokemonMenuState s_menu_state;
 static PokemonBattleState s_battle_state;
@@ -35,8 +35,24 @@ static uint8_t s_player_pokemon_exp;
 static bool s_clear_dialogue = true;
 static uint8_t s_cur_bg_palettes[PALETTE_BANK_SIZE];
 static uint16_t s_stats_battles, s_stats_wins, s_stats_losses, s_stats_runs;
+static uint8_t s_route_num = 0;
+static uint8_t s_player_sprite_choice, s_player_palette_choice;
+static uint8_t s_warp_route;
+static uint16_t s_warp_x, s_warp_y;
 
-static GPoint direction_to_point(Dir dir) {
+// TODO: 
+// - Add in animation tiles
+// - Change the hole in the fence to a walkable tile
+// - Make cut trees cut
+// -- "Would you like to use cut?"
+// -- Replace block on map w/ empty square, & walkable
+// - Incorporate:
+// -- New routes
+// -- New tilesheet
+// -- Animations
+// -- All the other data
+
+static GPoint direction_to_point(PlayerDirection dir) {
     switch (dir) {
         case D_UP:  return GPoint(0, -1);
         case D_LEFT:  return GPoint(-1, 0);
@@ -46,48 +62,44 @@ static GPoint direction_to_point(Dir dir) {
     }
 }
 
-#if defined(PBL_COLOR)
-static uint8_t BG_PALETTES[][4] = {
-    {0b11111111, 0b11101010, 0b11010101, 0b11000000},
-    {0b11111111, 0b11111010, 0b11110110, 0b11000000},
-    {0b11101101, 0b11011000, 0b11000100, 0b11000000},
-    {0b11000000, 0b11000000, 0b11000000, 0b11000000},
-    {0b11111111, 0b11111101, 0b11111000, 0b11000000},
-    {0b11111111, 0b11111001, 0b11100100, 0b11000000},
-    {0b11000000, 0b11000000, 0b11000000, 0b11000000},
-    {0b11000000, 0b11000000, 0b11000000, 0b11000000}
-};
-#else
-static uint8_t BG_PALETTES[][4] = {
-    {0, 0, 1, 1},
-    {0, 0, 1, 1},
-    {0, 0, 1, 1},
-    {0, 0, 1, 1},
-    {0, 0, 1, 1},
-    {0, 0, 1, 1},
-    {0, 0, 1, 1},
-    {0, 0, 0, 0}
-};
-#endif
+void print_array(uint8_t* x, uint16_t len, uint16_t breakpoint) {
+    char* print_holder = (char*)malloc(breakpoint*4);
+    memset(print_holder, 0, sizeof(print_holder));
+    char* hex_array = (char*)malloc(4);
+    memset(hex_array, 0, sizeof(hex_array));
+    for (uint16_t i = 0; i < len; i++) {
+        if (i % breakpoint == 0) {
+          APP_LOG(APP_LOG_LEVEL_DEBUG, print_holder);
+          memset(print_holder, 0, sizeof(print_holder));
+        }
+        snprintf(hex_array, 4, "%02x ", x[i]);
+        strcat(print_holder, hex_array);
+    }
+    if (strlen(print_holder) != 0) {
+      APP_LOG(APP_LOG_LEVEL_DEBUG, print_holder);
+    }
+    free(print_holder);
+    free(hex_array);
+}
 
 static uint8_t get_tile_id_from_map(uint8_t *map, uint16_t tile_x, uint16_t tile_y) {
-  uint8_t chunk = map[(tile_x >> 2) + (tile_y >> 2) * POKEMON_MAP_CHUNK_WIDTH];
-  uint8_t block = pokemon_chunks[chunk][((tile_x >> 1) & 1) + ((tile_y >> 1) & 1) * 2];
-  return pokemon_blocks[block][(tile_x & 1) + (tile_y & 1) * 2];
+  uint8_t chunk = map[(tile_x >> 2) + (tile_y >> 2) * map_widths[s_route_num]];
+  uint8_t block = chunks[s_route_num][chunk * 4 + ((tile_x >> 1) & 1) + ((tile_y >> 1) & 1) * 2];
+  return blocks[s_route_num][block * 4 + (tile_x & 1) + (tile_y & 1) * 2];
 }
 
 static void load_tiles(GBC_Graphics *graphics, uint8_t bg_root_x, uint8_t bg_root_y, uint16_t tile_root_x, uint16_t tile_root_y, uint8_t num_x_tiles, uint8_t num_y_tiles) {
   for (uint16_t tile_y = tile_root_y; tile_y < tile_root_y + num_y_tiles; tile_y++) {
     for (uint16_t tile_x = tile_root_x; tile_x < tile_root_x + num_x_tiles; tile_x++) {
       uint8_t tile = get_tile_id_from_map(s_world_map, tile_x, tile_y);
-      GBC_Graphics_bg_set_tile_and_attrs(graphics, bg_root_x + (tile_x - tile_root_x), bg_root_y + (tile_y - tile_root_y), tile, pokemon_tile_palettes[tile]);
+      GBC_Graphics_bg_set_tile_and_attrs(graphics, bg_root_x + (tile_x - tile_root_x), bg_root_y + (tile_y - tile_root_y), tile, tile_palettes[s_route_num][tile]);
     }
   }
 }
 
 static void load_screen(GBC_Graphics *graphics) {
   for (uint8_t i = 0; i < 8; i++) {
-    GBC_Graphics_set_bg_palette_array(graphics, i, BG_PALETTES[i]);
+    GBC_Graphics_set_bg_palette_array(graphics, i, &palettes[s_route_num][i*PALETTE_SIZE]);
   }
   GBC_Graphics_copy_all_bg_palettes(graphics, s_cur_bg_palettes);
   GBC_Graphics_bg_set_scroll_pos(graphics, 0, 0);
@@ -151,22 +163,35 @@ static void background_update_proc(Layer *layer, GContext *ctx) {
   graphics_draw_rect(ctx, rect_bounds);
 }
 
-static void load_player_sprites(GBC_Graphics *graphics) {
-  uint8_t sprites_to_use = rand() % 8;
-  uint8_t palette_to_use = rand() % 6;
-
-  s_player_palette = pokemon_trainer_sprite_palettes[palette_to_use];
+static void reset_player_palette(GBC_Graphics *graphics) {
+  s_player_palette = pokemon_trainer_sprite_palettes[s_player_palette_choice];
   GBC_Graphics_set_sprite_palette(graphics, 0, s_player_palette[0], s_player_palette[1], s_player_palette[2], s_player_palette[3]);
+}
 
-  uint16_t spritesheet_offset = pokemon_trainer_sheet_offsets[sprites_to_use] * POKEMON_TILES_PER_SPRITE;
-  GBC_Graphics_load_from_tilesheet_into_vram(graphics, RESOURCE_ID_DATA_POKEMON_SPRITESHEET,
-    spritesheet_offset, POKEMON_TILES_PER_SPRITE * POKEMON_SPRITES_PER_TRAINER, 1, 3); // offset 1 for grass
+static void load_player_sprites(GBC_Graphics *graphics) {
+  reset_player_palette(graphics);
+
+  uint16_t spritesheet_offset = pokemon_trainer_sheet_offsets[s_player_sprite_choice] * POKEMON_TILES_PER_SPRITE;
+  GBC_Graphics_load_from_tilesheet_into_vram(graphics, RESOURCE_ID_DATA_SPRITESHEET,
+    spritesheet_offset, POKEMON_TILES_PER_SPRITE * POKEMON_SPRITES_PER_TRAINER, 2, 3); // offset 2 for effects
+}
+
+static void new_player_sprites(GBC_Graphics *graphics) {
+  s_player_sprite_choice = rand() % 8;
+  s_player_palette_choice = rand() % 6;
+  load_player_sprites(graphics);
+}
+
+static void move_player_sprites(GBC_Graphics *graphics, short delta_x, short delta_y) {
+  for (uint8_t i = 0; i < 4; i++) {
+    GBC_Graphics_oam_move_sprite(graphics, 2+i, delta_x, delta_y);
+  }
 }
 
 static void set_player_sprites(GBC_Graphics *graphics, bool walk_sprite, bool x_flip) {
   uint8_t new_tile = pokemon_trainer_sprite_offsets[s_player_direction + walk_sprite * 4];
   for (uint8_t i = 0; i < 4; i++) {
-    GBC_Graphics_oam_set_sprite_tile(graphics, 2 + i, (new_tile * POKEMON_TILES_PER_SPRITE) + i + 1);
+    GBC_Graphics_oam_set_sprite_tile(graphics, 2 + i, (new_tile * POKEMON_TILES_PER_SPRITE) + i + 2);
     GBC_Graphics_oam_set_sprite_x_flip(graphics, 2 + i, x_flip);
   }
 
@@ -183,9 +208,9 @@ static bool load(PokemonSaveData *data) {
 static uint8_t get_block_type(uint8_t *map, uint16_t x, uint16_t y) {
   uint16_t tile_x = (x >> 3);
   uint16_t tile_y = (y >> 3);
-  uint8_t chunk = map[(tile_x >> 2) + (tile_y >> 2) * POKEMON_MAP_CHUNK_WIDTH];
-  uint8_t block = pokemon_chunks[chunk][((tile_x >> 1) & 1) + ((tile_y >> 1) & 1) * 2];
-  return pokemon_block_type[block];
+  uint8_t chunk = map[(tile_x >> 2) + (tile_y >> 2) * map_widths[s_route_num]];
+  uint8_t block = chunks[s_route_num][chunk * 4 + ((tile_x >> 1) & 1) + ((tile_y >> 1) & 1) * 2];
+  return block_types[s_route_num][block];
 }
 
 static void load_overworld(GBC_Graphics *graphics) {
@@ -197,11 +222,13 @@ static void load_overworld(GBC_Graphics *graphics) {
 
   load_player_sprites(graphics);
 
-  // Create grass effect sprites
+  // Create grass and shadow effect sprites
   uint16_t spritesheet_offset = POKEMON_SPRITELET_GRASS * POKEMON_TILES_PER_SPRITE;
-  GBC_Graphics_load_from_tilesheet_into_vram(graphics, RESOURCE_ID_DATA_POKEMON_SPRITESHEET, spritesheet_offset, 1, 0, 3);
+  GBC_Graphics_load_from_tilesheet_into_vram(graphics, RESOURCE_ID_DATA_SPRITESHEET, spritesheet_offset, 2, 0, 3);
   GBC_Graphics_oam_set_sprite(graphics, 0, 0, 0, 0, GBC_Graphics_attr_make(6, 3, false, false, false));
   GBC_Graphics_oam_set_sprite(graphics, 1, 0, 0, 0, GBC_Graphics_attr_make(6, 3, true, false, false));
+  GBC_Graphics_oam_set_sprite(graphics, 6, 0, 0, 1, GBC_Graphics_attr_make(0, 3, false, false, false));
+  GBC_Graphics_oam_set_sprite(graphics, 7, 0, 0, 1, GBC_Graphics_attr_make(0, 3, true, false, false));
   #if defined(PBL_COLOR)
     GBC_Graphics_set_sprite_palette(graphics, 6, 0b11101101, 0b11011000, 0b11000100, 0b11000000);
   #else
@@ -228,8 +255,25 @@ static void load_overworld(GBC_Graphics *graphics) {
   }
 }
 
+static void load_resources(GBC_Graphics *graphics) {
+  ResHandle handle = resource_get_handle(tilesheet_files[s_route_num]);
+  size_t res_size = resource_size(handle);
+  uint16_t tiles_to_load = res_size / 16;
+  GBC_Graphics_load_from_tilesheet_into_vram(graphics, tilesheet_files[s_route_num], 0, tiles_to_load, 0, 0);
+  
+  handle = resource_get_handle(map_files[s_route_num]);
+  res_size = resource_size(handle);
+  if (s_world_map != NULL) {
+    free(s_world_map);
+    s_world_map = NULL;
+  }
+  s_world_map = (uint8_t*)malloc(res_size);
+  resource_load(handle, s_world_map, res_size);
+
+  load_overworld(graphics);
+}
+
 static void load_game(GBC_Graphics *graphics) {
-  s_player_direction = D_DOWN;
   s_player_mode = P_STAND;
   s_game_state = PG_PLAY;
   s_walk_frame = 0;
@@ -237,17 +281,7 @@ static void load_game(GBC_Graphics *graphics) {
   s_player_sprite_x = 16 * 4 + SPRITE_OFFSET_X;
   s_player_sprite_y = 16 * 4 + SPRITE_OFFSET_Y;
 
-  ResHandle handle = resource_get_handle(RESOURCE_ID_DATA_POKEMON_TILESHEET);
-  size_t res_size = resource_size(handle);
-  uint16_t tiles_to_load = res_size / 16;
-  GBC_Graphics_load_from_tilesheet_into_vram(graphics, RESOURCE_ID_DATA_POKEMON_TILESHEET, 0, tiles_to_load, 0, 0);
-  
-  handle = resource_get_handle(POKEMON_MAP_FILE);
-  res_size = resource_size(handle);
-  s_world_map = (uint8_t*)malloc(res_size);
-  resource_load(handle, s_world_map, res_size);
-
-  load_overworld(graphics);
+  load_resources(graphics);
 }
 
 static uint32_t combine_4_bytes(uint8_t *array) {
@@ -342,10 +376,10 @@ void Pokemon_initialize(GBC_Graphics *graphics, Layer *background_layer) {
   }
 
   for (uint8_t i = 0; i < 8; i++) {
-    GBC_Graphics_set_bg_palette_array(graphics, i, BG_PALETTES[i]);
+    GBC_Graphics_set_bg_palette_array(graphics, i, &palettes[s_route_num][i*PALETTE_SIZE]);
   }
 
-  GBC_Graphics_load_from_tilesheet_into_vram(graphics, RESOURCE_ID_DATA_POKEMON_MENU_TILESHEET, 0, 121, 0, 1);
+  GBC_Graphics_load_from_tilesheet_into_vram(graphics, RESOURCE_ID_DATA_MENU_TILESHEET, 0, 121, 0, 1);
 
   GBC_Graphics_stat_set_line_compare_interrupt_enabled(graphics, false);
   GBC_Graphics_lcdc_set_bg_layer_enabled(graphics, true);
@@ -387,7 +421,7 @@ void Pokemon_deinitialize(GBC_Graphics *graphics) {
   layer_set_update_proc(s_background_layer, NULL);
 }
 
-static void load_blocks_in_direction(GBC_Graphics *graphics, Dir direction) {
+static void load_blocks_in_direction(GBC_Graphics *graphics, PlayerDirection direction) {
   uint8_t bg_root_x = (GBC_Graphics_bg_get_scroll_x(graphics) >> 3);
   uint8_t bg_root_y = (GBC_Graphics_bg_get_scroll_y(graphics) >> 3);
   uint16_t tile_root_x = (s_player_x >> 3) - 8;
@@ -426,12 +460,40 @@ static int check_for_object(uint16_t target_x, uint16_t target_y) {
   uint16_t block_x = target_x >> 4;
   uint16_t block_y = target_y >> 4;
 
-  for (uint16_t i = 0; i < sizeof(pokemon_objects); i++) {
-    if (block_x == pokemon_objects[i][0] && block_y == pokemon_objects[i][1]) {
+  for (uint16_t i = 0; i < sizeof(objects); i++) {
+    if (s_route_num == objects[i][0] && block_x == objects[i][1] && block_y == objects[i][2]) {
       return i;
     }
   }
   return -1;
+}
+
+static void lerp_player_palette_to_color(GBC_Graphics *graphics, uint8_t end, uint8_t index) {
+  uint8_t palette_holder[4];
+  uint8_t end_palette[4] = {end, end, end, end};
+  lerp_palette(s_player_palette, end_palette, index, palette_holder);
+  GBC_Graphics_set_sprite_palette_array(graphics, 0, palette_holder);
+}
+
+static void lerp_bg_palettes_to_color(GBC_Graphics *graphics, uint8_t end, uint8_t index) {
+  uint8_t palette_holder[4];
+  uint8_t end_palette[4] = {end, end, end, end};
+  for (uint8_t i = 0; i < 8; i++) {
+    lerp_palette(&s_cur_bg_palettes[i*PALETTE_SIZE], end_palette, index, palette_holder);
+    GBC_Graphics_set_bg_palette_array(graphics, i, palette_holder);
+  }
+}
+
+static void set_player_palette_to_color(GBC_Graphics *graphics, uint8_t color) {
+  uint8_t palette[4] = {color, color, color, color};
+  GBC_Graphics_set_sprite_palette_array(graphics, 0, palette);
+}
+
+static void set_bg_palettes_to_color(GBC_Graphics *graphics, uint8_t color) {
+  uint8_t palette[4] = {color, color, color, color};
+  for (uint8_t i = 0; i < 8; i++) {
+    GBC_Graphics_set_bg_palette_array(graphics, i, palette);
+  }
 }
 
 static void play(GBC_Graphics *graphics) {
@@ -446,28 +508,54 @@ static void play(GBC_Graphics *graphics) {
     GBC_Graphics_oam_set_sprite_priority(graphics, 5, false);
 
     PokemonSquareInfo block_type = get_block_type(s_world_map, s_target_x+8, s_target_y);
+    APP_LOG(APP_LOG_LEVEL_DEBUG, "Block at %d, %d yielded type %d", s_target_x+8, s_target_y, block_type);
     if (block_type == OBJECT) {
     
       int object_num = check_for_object(s_target_x+8, s_target_y);
+      APP_LOG(APP_LOG_LEVEL_DEBUG, "Check at %d, %d yielded object %d", s_target_x+8, s_target_y, object_num);
       if (object_num != -1) {
-        PokemonObjectTypes object_type = pokemon_objects[object_num][2];
-        uint16_t data = pokemon_objects[object_num][3];
+        PokemonObjectTypes object_type = objects[object_num][3];
+        const int16_t *data = &objects[object_num][4];
         switch (object_type) {
           case PO_NONE:
             break;
-          case PO_CUT_TREE:
-          case PO_DOOR:
+          case PO_TREE:
           case PO_SIGN:
             load_screen(graphics);
-            begin_dialogue(graphics, DIALOGUE_BOUNDS, DIALOGUE_ROOT, data, true);
+            begin_dialogue(graphics, DIALOGUE_BOUNDS, DIALOGUE_ROOT, data[0], true);
             s_prev_game_state = s_game_state;
             s_game_state = PG_DIALOGUE;
             s_player_mode = P_STAND;
+            s_can_move = false;
+            break;
+          case PO_WARP:{
+            s_warp_route = data[0];
+            s_warp_x = data[1];
+            s_warp_y = data[2];
+            if (s_player_direction == D_UP) {
+              s_player_mode = P_WARP_WALK;
+            } else {
+              s_player_mode = P_WARP;
+            }
+            s_can_move = true;
+          } break;
+          default:
+            break;
         }
       }
-      s_can_move = false;
     } else {
-      s_can_move = block_type != BLOCK;
+      if ((block_type == CLIFF_S && s_player_direction == D_DOWN)
+          || (block_type == CLIFF_W && s_player_direction == D_LEFT)
+          || (block_type == CLIFF_E && s_player_direction == D_RIGHT)) {
+        s_target_x += direction_to_point(s_player_direction).x * (TILE_WIDTH * 2);
+        s_target_y += direction_to_point(s_player_direction).y * (TILE_HEIGHT * 2);
+        s_player_mode = P_JUMP;
+        s_can_move = true;
+      } else {
+        s_can_move = (block_type == WALK || block_type == GRASS);
+      }
+      // if block type == cliff and direction == (based on cliff)
+      // target pos = + some more, mode = jump
 
       if (!s_can_move) {
         s_target_x = s_player_x;
@@ -503,7 +591,7 @@ static void play(GBC_Graphics *graphics) {
       //   }
       // }
       break;
-    case P_WALK:    
+    case P_WALK:
       if (s_can_move) {
         s_player_x += direction_to_point(s_player_direction).x * 2;
         s_player_y += direction_to_point(s_player_direction).y * 2;
@@ -561,6 +649,173 @@ static void play(GBC_Graphics *graphics) {
       }
       s_walk_frame++;
       break;
+    case P_JUMP:
+      if (s_can_move) {
+        s_player_x += direction_to_point(s_player_direction).x * 2;
+        s_player_y += direction_to_point(s_player_direction).y * 2;
+        GBC_Graphics_bg_move(graphics, direction_to_point(s_player_direction).x * 2, direction_to_point(s_player_direction).y * 2);
+      }
+      if (get_block_type(s_world_map, s_target_x+8, s_target_y) == GRASS && s_walk_frame == 15) { // grass
+        if (s_can_move && (rand() % WILD_ODDS == 0)) {
+          load_screen(graphics);
+          s_game_state = PG_BATTLE;
+          s_battle_state = PB_FLASH;
+          s_battle_frame = 0;
+        }
+      }
+      switch(s_walk_frame) {
+        case 15:
+          s_player_mode = P_STAND;
+        #if defined(PBL_COLOR)
+          if(get_block_type(s_world_map, s_player_x+8, s_player_y) == GRASS) {
+            GBC_Graphics_oam_set_sprite_priority(graphics, 4, true);
+            GBC_Graphics_oam_set_sprite_priority(graphics, 5, true);
+          }
+        #endif
+          GBC_Graphics_oam_hide_sprite(graphics, 6);
+          GBC_Graphics_oam_hide_sprite(graphics, 7);
+          break;
+        case 0:
+          GBC_Graphics_oam_set_sprite_pos(graphics, 6, s_player_sprite_x, s_player_sprite_y + 8);
+          GBC_Graphics_oam_set_sprite_pos(graphics, 7, s_player_sprite_x + 8, s_player_sprite_y + 8);
+        case 6:
+        case 8:
+        case 14:
+          set_player_sprites(graphics, false,  s_player_direction == D_RIGHT);
+          break;
+        case 10:
+          set_player_sprites(graphics, true,  s_player_direction == D_RIGHT 
+                             || ((s_player_direction == D_DOWN || s_player_direction == D_UP) && s_flip_walk));
+          break;
+        case 7:
+          load_blocks_in_direction(graphics, s_player_direction);
+          break;
+        default:
+          break;
+      }
+      switch(s_walk_frame) {
+        case 0:
+          move_player_sprites(graphics, 0, -3);
+          break;
+        case 1:
+          move_player_sprites(graphics, 0, -2);
+          break;
+        case 2:
+          move_player_sprites(graphics, 0, -2);
+          break;
+        case 3:
+          move_player_sprites(graphics, 0, -1);
+          break;
+        case 4:
+          move_player_sprites(graphics, 0, -1);
+          break;
+        case 5:
+          move_player_sprites(graphics, 0, -1);
+          break;
+        case 9:
+          move_player_sprites(graphics, 0, 1);
+          break;
+        case 10:
+          move_player_sprites(graphics, 0, 1);
+          break;
+        case 11:
+          move_player_sprites(graphics, 0, 1);
+          break;
+        case 12:
+          move_player_sprites(graphics, 0, 2);
+          break;
+        case 13:
+          move_player_sprites(graphics, 0, 2);
+          break;
+        case 14:
+          move_player_sprites(graphics, 0, 3);
+          break;
+        default:
+          break;
+      }
+      s_walk_frame++;
+      break;
+    case P_WARP_WALK:
+      if (s_can_move) {
+        s_player_x += direction_to_point(s_player_direction).x * 2;
+        s_player_y += direction_to_point(s_player_direction).y * 2;
+        GBC_Graphics_bg_move(graphics, direction_to_point(s_player_direction).x * 2, direction_to_point(s_player_direction).y * 2);
+      }
+      switch(s_walk_frame) {
+        case 7:
+          if (s_player_direction == D_DOWN) {
+            s_player_mode = P_STAND;
+          } else {
+            s_player_mode = P_WARP;
+            s_walk_frame = 0;
+          }
+          break;
+        case 0:
+        case 6:
+          set_player_sprites(graphics, false,  s_player_direction == D_RIGHT);
+          break;
+        case 2:
+          set_player_sprites(graphics, true,  s_player_direction == D_RIGHT 
+                             || ((s_player_direction == D_DOWN || s_player_direction == D_UP) && s_flip_walk));
+          break;
+        default:
+          break;
+      }
+      if (s_player_mode == P_WARP_WALK) {
+        s_walk_frame++;
+      }
+      break;
+    case P_WARP:
+      if (s_walk_frame < 4) {
+        if (s_walk_frame == 0) {
+          GBC_Graphics_copy_all_bg_palettes(graphics, s_cur_bg_palettes);
+        }
+      #if defined(PBL_COLOR)
+        lerp_bg_palettes_to_color(graphics, 0b11111111, s_walk_frame);
+        lerp_player_palette_to_color(graphics, 0b11111111, s_walk_frame);
+      #else
+        if (s_walk_frame == 3) {
+          set_bg_palettes_to_color(graphics, 1);      
+          set_player_palette_to_color(graphics, 1);
+        }
+      #endif
+      } else {
+        if (s_walk_frame == 4) {  
+          s_route_num = s_warp_route;
+          s_player_x = s_warp_x;
+          s_player_y = s_warp_y;
+          s_target_x = s_warp_x;
+          s_target_y = s_warp_y;
+          load_resources(graphics);
+          load_blocks_in_direction(graphics, s_player_direction);
+          GBC_Graphics_copy_all_bg_palettes(graphics, s_cur_bg_palettes);
+        #if defined(PBL_BW)
+          set_bg_palettes_to_color(graphics, 1);
+        #endif
+        }
+      #if defined(PBL_COLOR)
+        lerp_bg_palettes_to_color(graphics, 0b11111111, 7 - s_walk_frame);
+        lerp_player_palette_to_color(graphics, 0b11111111, 7 - s_walk_frame);
+      #else
+        if (s_walk_frame == 5) {
+          for (uint8_t i = 0; i < 8; i++) {
+            GBC_Graphics_set_bg_palette_array(graphics, i, &palettes[s_route_num][i*PALETTE_SIZE]);
+          }
+        }
+      #endif
+      }
+      if (s_player_mode == P_WARP) {
+        s_walk_frame++;
+      }
+      if (s_walk_frame == 7) {
+        if (s_player_direction == D_DOWN) {
+          s_player_mode = P_WARP_WALK;
+          s_walk_frame = 0;
+        } else {
+          s_player_mode = P_STAND;
+        }
+      }
+      break;
     default:
       break;
   }
@@ -593,22 +848,6 @@ static void draw_pause_menu(GBC_Graphics *graphics) {
   draw_menu(graphics, GRect(MENU_ROOT_X, MENU_ROOT_Y, 9, NUM_MENU_ITEMS * 2 + 2), "RESUME\n\nPEBBLE\n\nSTATS\n\nSAVE\n\nQUIT", false, false);
   set_num_menu_items(NUM_MENU_ITEMS);
   draw_menu_info(graphics);
-}
-
-static void lerp_bg_palettes_to_color(GBC_Graphics *graphics, uint8_t end, uint8_t index) {
-  uint8_t palette_holder[4];
-  uint8_t end_palette[4] = {end, end, end, end};
-  for (uint8_t i = 0; i < 8; i++) {
-    lerp_palette(&s_cur_bg_palettes[i*PALETTE_SIZE], end_palette, index, palette_holder);
-    GBC_Graphics_set_bg_palette_array(graphics, i, palette_holder);
-  }
-}
-
-static void set_bg_palettes_to_color(GBC_Graphics *graphics, uint8_t color) {
-  uint8_t palette[4] = {color, color, color, color};
-  for (uint8_t i = 0; i < 8; i++) {
-    GBC_Graphics_set_bg_palette_array(graphics, i, palette);
-  }
 }
 
 static void handle_battle_scroll_interrupt(GBC_Graphics *graphics) {
@@ -685,7 +924,7 @@ static void battle(GBC_Graphics *graphics) {
     #else
       if (frame_mod == 0 || frame_mod == 4) {
         for (uint8_t i = 0; i < 8; i++) {
-          GBC_Graphics_set_bg_palette_array(graphics, i, BG_PALETTES[i]);
+          GBC_Graphics_set_bg_palette_array(graphics, i, &palettes[s_route_num][i*PALETTE_SIZE]);
         }
       } else if (frame_mod == 2) {
         set_bg_palettes_to_color(graphics, 0);
@@ -697,20 +936,20 @@ static void battle(GBC_Graphics *graphics) {
         set_bg_palettes_to_color(graphics, 0);
       } else if (s_battle_frame % 20 == 10) {
         for (uint8_t i = 0; i < 8; i++) {
-          GBC_Graphics_set_bg_palette_array(graphics, i, BG_PALETTES[i]);
+          GBC_Graphics_set_bg_palette_array(graphics, i, bg_palettes[i]);
         }
       } else if (s_battle_frame % 20 == 15) {
         set_bg_palettes_to_color(graphics, 1);
       } else if (s_battle_frame % 20 == 0) {
         for (uint8_t i = 0; i < 8; i++) {
-          GBC_Graphics_set_bg_palette_array(graphics, i, BG_PALETTES[i]);
+          GBC_Graphics_set_bg_palette_array(graphics, i, bg_palettes[i]);
         }
       } */
     #endif
       s_battle_frame++;
       if (s_battle_frame == 24) {
         for (uint8_t i = 0; i < 8; i++) {
-          GBC_Graphics_set_bg_palette_array(graphics, i, BG_PALETTES[i]);
+          GBC_Graphics_set_bg_palette_array(graphics, i, &palettes[s_route_num][i*PALETTE_SIZE]);
         }
         s_battle_state = PB_WIPE;
         s_battle_frame = 0;
@@ -1025,8 +1264,12 @@ static void battle(GBC_Graphics *graphics) {
 
 static void save() {
   PokemonSaveData data = (PokemonSaveData) {
+    .route_num = s_route_num,
     .player_x = s_player_x,
     .player_y = s_player_y,
+    .player_direction = s_player_direction,
+    .player_sprite_choice = s_player_sprite_choice,
+    .player_palette_choice = s_player_palette_choice,
     .last_save = time(NULL),
     .battles = s_stats_battles,
     .wins = s_stats_wins,
@@ -1044,7 +1287,7 @@ void Pokemon_step(GBC_Graphics *graphics) {
   }
   // s_poll_frame = (s_poll_frame + 1) % 8;
   // AccelData accel = (AccelData) { .x = 0, .y = 0, .z = 0 };
-  // Dir old_direction = s_player_direction;
+  // PlayerDirection old_direction = s_player_direction;
   if (s_player_mode == P_STAND && s_game_state == PG_PAUSE_QUEUED) {
     set_cursor_pos(0);
     draw_pause_menu(graphics);
@@ -1247,8 +1490,12 @@ void Pokemon_handle_select_click(GBC_Graphics *graphics) {
           case 0: {// Continue
             PokemonSaveData data;
             load(&data);
+            s_route_num = data.route_num;
             s_player_x = data.player_x;
             s_player_y = data.player_y;
+            s_player_direction = data.player_direction;
+            s_player_sprite_choice = data.player_sprite_choice;
+            s_player_palette_choice = data.player_palette_choice;
             s_stats_battles = data.battles;
             s_stats_wins = data.wins;
             s_stats_losses = data.losses;
@@ -1260,6 +1507,7 @@ void Pokemon_handle_select_click(GBC_Graphics *graphics) {
           case 1: // New
             s_player_x = PLAYER_ORIGIN_X;
             s_player_y = PLAYER_ORIGIN_Y;
+            new_player_sprites(graphics);
             load_game(graphics);
             s_game_state = PG_PLAY;
             s_select_pressed = false;
@@ -1273,6 +1521,7 @@ void Pokemon_handle_select_click(GBC_Graphics *graphics) {
           case 0: // New
             s_player_x = PLAYER_ORIGIN_X;
             s_player_y = PLAYER_ORIGIN_Y;
+            new_player_sprites(graphics);
             load_game(graphics);
             s_game_state = PG_PLAY;
             s_select_pressed = false;
@@ -1388,7 +1637,7 @@ void Pokemon_handle_up(GBC_Graphics *graphics) {
 
 void Pokemon_handle_tap(GBC_Graphics *graphics) {
   if (s_game_state == PG_PLAY) {
-    load_player_sprites(graphics);
+    new_player_sprites(graphics);
   }
 }
 

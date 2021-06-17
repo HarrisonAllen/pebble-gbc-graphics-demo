@@ -7,11 +7,14 @@ typedef enum {
   D_LEFT,
   D_DOWN,
   D_RIGHT
-} Dir;
+} PlayerDirection;
 
 typedef enum {
   P_STAND,
-  P_WALK
+  P_WALK,
+  P_JUMP,
+  P_WARP,
+  P_WARP_WALK
 } PlayerMode;
 
 typedef enum {

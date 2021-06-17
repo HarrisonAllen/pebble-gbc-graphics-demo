@@ -27,33 +27,43 @@
       "media": [
         {
           "type": "raw",
-          "name": "DATA_POKEMON_TILESHEET",
-          "file": "data/PokemonTilesheet.bin"
+          "name": "DATA_ROUTE_1_TILESHEET",
+          "file": "data/Route1Tilesheet.bin"
         },
         {
           "type": "raw",
-          "name": "DATA_POKEMON_ROUTE_1",
-          "file": "data/PokemonRoute1.bin"
+          "name": "DATA_ROUTE_2_TILESHEET",
+          "file": "data/Route2Tilesheet.bin"
         },
         {
           "type": "raw",
-          "name": "DATA_POKEMON_SPRITESHEET",
-          "file": "data/PokemonSpritesheet.bin"
+          "name": "DATA_ROUTE_1",
+          "file": "data/Route1.bin"
         },
         {
           "type": "raw",
-          "name": "DATA_POKEMON_MENU_TILESHEET",
-          "file": "data/PokemonMenuTilesheet.bin"
+          "name": "DATA_ROUTE_2",
+          "file": "data/Route2.bin"
         },
         {
           "type": "raw",
-          "name": "DATA_POKEMON_DIALOGUE_DATA",
-          "file": "data/PokemonDialogue_data.bin"
+          "name": "DATA_SPRITESHEET",
+          "file": "data/Spritesheet.bin"
         },
         {
           "type": "raw",
-          "name": "DATA_POKEMON_DIALOGUE_TEXT",
-          "file": "data/PokemonDialogue_text.bin"
+          "name": "DATA_MENU_TILESHEET",
+          "file": "data/MenuTilesheet.bin"
+        },
+        {
+          "type": "raw",
+          "name": "DATA_DIALOGUE_DATA",
+          "file": "data/Dialogue_data.bin"
+        },
+        {
+          "type": "raw",
+          "name": "DATA_DIALOGUE_TEXT",
+          "file": "data/Dialogue_text.bin"
         },
         {
           "type": "raw",

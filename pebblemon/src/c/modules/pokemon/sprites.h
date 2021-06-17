@@ -42,7 +42,7 @@ const uint8_t pokemon_trainer_sprite_offsets[] = {
     POKEMON_TRAINER_WALK_RIGHT,
 };
 
-const uint8_t pokemon_trainer_sprite_palettes[][4] = {
+uint8_t pokemon_trainer_sprite_palettes[][4] = {
 #if defined(PBL_COLOR)
     {0b11111111, 0b11111001, 0b11110000, 0b11000000},
     {0b11111111, 0b11111001, 0b11010111, 0b11000000},

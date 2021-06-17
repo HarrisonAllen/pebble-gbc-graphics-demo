@@ -34,12 +34,16 @@
     #define FRAME_SKIP 1
 #endif
 
-#define PLAYER_ORIGIN_X 16*51
-#define PLAYER_ORIGIN_Y 16*13
+#define PLAYER_ORIGIN_X 16*27
+#define PLAYER_ORIGIN_Y 16*7
 
 typedef struct {
+    uint8_t route_num;
     uint16_t player_x;
     uint16_t player_y;
+    uint8_t player_sprite_choice;
+    uint8_t player_palette_choice;
+    uint8_t player_direction;
     time_t last_save;
     uint16_t battles;
     uint16_t wins;

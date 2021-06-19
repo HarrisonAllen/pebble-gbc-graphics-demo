@@ -1,0 +1,18 @@
+=  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =
+=                                                  =
+=                                                  =
+=     M  O  V  E     M  O  D  E                    =
+=                          :  T  O  G  G  L  E     = HOLD
+=     T  U  R  N     M  O  D  E                    =
+=                          :  B  U  T  T  O  N     = TILT
+=     T  E  X  T     S  P  E  E  D                 = 
+=                          :  F  A  S  T           = Normal, Fast, Instant
+=     P  L  A  Y  E  R     S  P  R  I  T  E        =
+=                          :  0                    = 1, 2, 3, etc.
+=     P  L  A  Y  E  R     C  O  L  O  R           =
+=                          :  0           X  X     = 1, 2, 3, etc.
+=                                         X  X     = X: where to display player sprite
+=     C  A  N  C  E  L                             = 
+=                                                  =
+=                                                  =
+=  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =  =

@@ -10,10 +10,14 @@
 #define INFO_ROOT_Y 13
 #define PEBBLE_ROOT_X 1
 #define PEBBLE_ROOT_Y 4
+#define STATS_ROOT_X 0
+#define STATS_ROOT_Y 0
+#define OPTION_ROOT_X 0
+#define OPTION_ROOT_Y 2
 #define START_MENU_ROOT_X 0
 #define START_MENU_ROOT_Y 1
 #define START_INFO_ROOT_X 1
-#define START_INFO_ROOT_Y 13
+#define START_INFO_ROOT_Y 12
 #define SAVE_KEY 1
 #define DIALOGUE_BOUNDS GRect(0, 12, 18, 6)
 #define DIALOGUE_ROOT GPoint(1, 14)
@@ -41,9 +45,14 @@ typedef struct {
     uint8_t route_num;
     uint16_t player_x;
     uint16_t player_y;
-    uint8_t player_sprite_choice;
-    uint8_t player_palette_choice;
+    uint8_t player_sprite;
+    uint8_t player_color;
     uint8_t player_direction;
+    bool move_mode_toggle;
+    bool turn_mode_tilt;
+    uint8_t text_speed;
+    uint8_t player_level;
+    int player_exp;
     time_t last_save;
     uint16_t battles;
     uint16_t wins;

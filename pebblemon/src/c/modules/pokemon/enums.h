@@ -49,6 +49,7 @@ typedef enum {
   PM_BASE,
   PM_PEBBLE,
   PM_STATS,
+  PM_OPTION,
   PM_SAVE_CONFIRM,
   PM_SAVE_OVERWRITE,
   PM_SAVING,

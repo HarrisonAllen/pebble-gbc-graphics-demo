@@ -27,13 +27,28 @@
       "media": [
         {
           "type": "raw",
-          "name": "DATA_ROUTE_1_TILESHEET",
-          "file": "data/Route1Tilesheet.bin"
+          "name": "DATA_ANIMATION_TILESHEET",
+          "file": "data/AnimationTilesheet.bin"
         },
         {
           "type": "raw",
-          "name": "DATA_ROUTE_2_TILESHEET",
-          "file": "data/Route2Tilesheet.bin"
+          "name": "DATA_WORLD_TILESHEET",
+          "file": "data/WorldTilesheet.bin"
+        },
+        {
+          "type": "raw",
+          "name": "DATA_CAVE",
+          "file": "data/Cave.bin"
+        },
+        {
+          "type": "raw",
+          "name": "DATA_FOREST",
+          "file": "data/Forest.bin"
+        },
+        {
+          "type": "raw",
+          "name": "DATA_NATIONAL_PARK",
+          "file": "data/NationalPark.bin"
         },
         {
           "type": "raw",

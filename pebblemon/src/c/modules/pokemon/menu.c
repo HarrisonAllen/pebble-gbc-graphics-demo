@@ -187,37 +187,43 @@ DialogueState get_dialogue_state() {
   return s_dialogue_state;
 }
 
-void step_dialogue(GBC_Graphics *graphics, bool select_pressed) {
+void step_dialogue(GBC_Graphics *graphics, bool select_pressed, uint8_t speed) {
   switch (s_dialogue_state) {
     case D_IDLE:
       break;
     case D_WRITING:
-      s_dialogue_frame = (s_dialogue_frame + 1) % 2;
-      if (s_dialogue_frame == 0 || select_pressed) {
-        if (s_dialogue_buffer[s_dialogue_buffer_pos] == '\n') {
-          s_dialogue_x = s_dialogue_root.x;
-          s_dialogue_y += 2;
-          s_cur_line++;
-          if (s_cur_line >= s_max_lines) {
-            s_cur_line = 0;
-            s_dialogue_y = s_dialogue_root.y;
-            s_dialogue_state = D_WAITING;
-          }
-        } else if (s_dialogue_buffer[s_dialogue_buffer_pos] == '\0'){
-          s_cur_line = 0;
-          if (s_dialogue_waits) {
-            s_dialogue_state = D_FINAL_WAIT;
-          } else {
-            s_dialogue_state = D_IDLE;
-          }
-
-          free(s_dialogue_buffer);
-          s_dialogue_buffer = NULL;
-        } else {
-          draw_char_at_location(graphics, GPoint(s_dialogue_x, s_dialogue_y), s_dialogue_buffer[s_dialogue_buffer_pos]);
-          s_dialogue_x++;
+      if (speed == 2) {
+        while (s_dialogue_state == D_WRITING) {
+          step_dialogue(graphics, select_pressed, 1);
         }
-        s_dialogue_buffer_pos++;
+      } else {
+        s_dialogue_frame = (s_dialogue_frame + 1) % 2;
+        if (s_dialogue_frame == 0 || select_pressed || speed == 1) {
+          if (s_dialogue_buffer[s_dialogue_buffer_pos] == '\n') {
+            s_dialogue_x = s_dialogue_root.x;
+            s_dialogue_y += 2;
+            s_cur_line++;
+            if (s_cur_line >= s_max_lines) {
+              s_cur_line = 0;
+              s_dialogue_y = s_dialogue_root.y;
+              s_dialogue_state = D_WAITING;
+            }
+          } else if (s_dialogue_buffer[s_dialogue_buffer_pos] == '\0'){
+            s_cur_line = 0;
+            if (s_dialogue_waits) {
+              s_dialogue_state = D_FINAL_WAIT;
+            } else {
+              s_dialogue_state = D_IDLE;
+            }
+
+            free(s_dialogue_buffer);
+            s_dialogue_buffer = NULL;
+          } else {
+            draw_char_at_location(graphics, GPoint(s_dialogue_x, s_dialogue_y), s_dialogue_buffer[s_dialogue_buffer_pos]);
+            s_dialogue_x++;
+          }
+          s_dialogue_buffer_pos++;
+        }
       }
       break;
     case D_WAITING:
@@ -257,7 +263,7 @@ void unload_dialogue() {
 
 
 void draw_enemy_battle_frame(GBC_Graphics *graphics) {
-  GPoint root = GPoint(0, 0);
+  GPoint root = GPoint(0, PBL_IF_ROUND_ELSE(1, 0));
 #if defined(PBL_COLOR)
   GBC_Graphics_set_bg_palette(graphics, 3, 0b11111111, 0b11111110, 0b11000000, 0b11000000);
 #else
@@ -341,7 +347,7 @@ static void draw_hp_bar(GBC_Graphics *graphics, uint8_t palette, GPoint bar_star
 }
 
 void draw_enemy_hp_bar(GBC_Graphics *graphics, uint16_t max_health, uint16_t cur_health) {
-  draw_hp_bar(graphics, 4, GPoint(3, 2), 6, max_health, cur_health);
+  draw_hp_bar(graphics, 4, GPoint(3, PBL_IF_ROUND_ELSE(3, 2)), 6, max_health, cur_health);
 }
 
 void draw_player_hp_bar(GBC_Graphics *graphics, uint16_t max_health, uint16_t cur_health) {

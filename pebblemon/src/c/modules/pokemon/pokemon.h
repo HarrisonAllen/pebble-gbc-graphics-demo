@@ -13,7 +13,7 @@
 #define STATS_ROOT_X 0
 #define STATS_ROOT_Y 0
 #define OPTION_ROOT_X 0
-#define OPTION_ROOT_Y 2
+#define OPTION_ROOT_Y 3
 #define START_MENU_ROOT_X 0
 #define START_MENU_ROOT_Y 1
 #define START_INFO_ROOT_X 1
@@ -46,7 +46,7 @@ typedef struct {
     uint16_t player_x;
     uint16_t player_y;
     uint8_t player_sprite;
-    uint8_t player_color;
+    // uint8_t player_color;
     uint8_t player_direction;
     bool move_mode_toggle;
     bool turn_mode_tilt;

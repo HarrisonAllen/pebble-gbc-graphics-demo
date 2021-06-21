@@ -57,7 +57,7 @@ void move_cursor_up(GBC_Graphics *graphics);
 void begin_dialogue_from_string(GBC_Graphics *graphics, GRect dialogue_bounds, GPoint dialogue_root, char *dialogue, bool wait);
 void begin_dialogue(GBC_Graphics *graphics, GRect dialogue_bounds, GPoint dialogue_root, uint16_t dialogue_id, bool waits);
 DialogueState get_dialogue_state();
-void step_dialogue(GBC_Graphics *graphics, bool select_pressed);
+void step_dialogue(GBC_Graphics *graphics, bool select_pressed, uint8_t speed);
 void handle_input_dialogue(GBC_Graphics *graphics);
 void unload_dialogue();
 

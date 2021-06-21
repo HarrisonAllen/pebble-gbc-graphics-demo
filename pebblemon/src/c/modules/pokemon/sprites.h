@@ -42,6 +42,56 @@ const uint8_t pokemon_trainer_sprite_offsets[] = {
     POKEMON_TRAINER_WALK_RIGHT,
 };
 
+uint16_t pokemon_trainer_sprites[] = {
+    0,      // Chris
+    12,     // Kris
+    31,     // Rival
+    103,    // Prof. Elm
+    37,     // Prof. Oak
+    323,    // Nurse
+    308,    // Team Rocket Grunt (Male)
+    314,    // Team Rocket Grunt (Female)
+    79,     // Mom
+    142,    // Jasmine
+    175,    // Misty
+    160,    // Brock
+    169,    // Bruno
+    284,    // Old Man
+    290,    // Old Woman
+    353,    // Kimono Girl
+    49,     // Gary (Blue)
+    154,    // Clair
+    181,    // Lance
+    532,    // Clefairy
+    544,    // Dragon
+    516     // Surfing Pikachu
+};
+
+uint8_t pokemon_trainer_palettes[][4] = {
+    {0b11111111, 0b11111001, 0b11110000, 0b11000000},    // Chris
+    {0b11111111, 0b11111001, 0b11010111, 0b11000000},    // Kris
+    {0b11111111, 0b11111001, 0b11110001, 0b11000000},    // Rival
+    {0b11111111, 0b11111001, 0b11100100, 0b11000000},    // Prof. Elm
+    {0b11111111, 0b11111001, 0b11100100, 0b11000000},    // Prof. Oak
+    {0b11111111, 0b11111001, 0b11110111, 0b11000000},    // Nurse
+    {0b11111111, 0b11111001, 0b11100100, 0b11000000},    // Team Rocket Grunt (Male)
+    {0b11111111, 0b11111001, 0b11110000, 0b11000000},    // Team Rocket Grunt (Female)
+    {0b11111111, 0b11111001, 0b11110000, 0b11000000},    // Mom
+    {0b11111111, 0b11111001, 0b11010000, 0b11000000},    // Jasmine
+    {0b11111111, 0b11111001, 0b11110100, 0b11000000},    // Misty
+    {0b11111111, 0b11111001, 0b11100100, 0b11000000},    // Brock
+    {0b11111111, 0b11111001, 0b11100100, 0b11000000},    // Bruno
+    {0b11111111, 0b11111001, 0b11010101, 0b11000000},    // Old Man
+    {0b11111111, 0b11111001, 0b11010101, 0b11000000},    // Old Woman
+    {0b11111111, 0b11111001, 0b11100011, 0b11000000},    // Kimono Girl
+    {0b11111111, 0b11111001, 0b11000100, 0b11000000},    // Gary (Blue)
+    {0b11111111, 0b11111001, 0b11010110, 0b11000000},    // Clair
+    {0b11111111, 0b11111001, 0b11100101, 0b11000000},    // Lance
+    {0b11111111, 0b11111111, 0b11111011, 0b11000000},    // Clefairy
+    {0b11111111, 0b11111110, 0b11110100, 0b11000000},    // Dragon
+    {0b11111111, 0b11111101, 0b11110000, 0b11000000},    // Surfing Pikachu
+};
+
 uint8_t pokemon_trainer_sprite_palettes[][4] = {
 #if defined(PBL_COLOR)
     {0b11111111, 0b11111001, 0b11110000, 0b11000000},

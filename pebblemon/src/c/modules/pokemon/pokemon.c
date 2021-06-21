@@ -38,7 +38,7 @@ static uint16_t s_stats_battles, s_stats_wins, s_stats_losses, s_stats_runs;
 static uint8_t s_route_num = 3;
 static uint8_t s_warp_route;
 static uint16_t s_warp_x, s_warp_y;
-static uint8_t s_player_level = 89;
+static uint8_t s_player_level = 100;
 static int s_player_exp = 718935;
 static bool s_move_mode_toggle;
 static bool s_turn_mode_tilt;
@@ -170,21 +170,21 @@ static void background_update_proc(Layer *layer, GContext *ctx) {
 }
 
 static void reset_player_palette(GBC_Graphics *graphics) {
-  s_player_palette = pokemon_trainer_sprite_palettes[s_player_color];
+  s_player_palette = pokemon_trainer_palettes[s_player_sprite];
   GBC_Graphics_set_sprite_palette(graphics, 0, s_player_palette[0], s_player_palette[1], s_player_palette[2], s_player_palette[3]);
 }
 
 static void load_player_sprites(GBC_Graphics *graphics) {
   reset_player_palette(graphics);
 
-  uint16_t spritesheet_offset = pokemon_trainer_sheet_offsets[s_player_sprite] * POKEMON_TILES_PER_SPRITE;
+  uint16_t spritesheet_offset = pokemon_trainer_sprites[s_player_sprite] * POKEMON_TILES_PER_SPRITE;
   GBC_Graphics_load_from_tilesheet_into_vram(graphics, RESOURCE_ID_DATA_SPRITESHEET,
     spritesheet_offset, POKEMON_TILES_PER_SPRITE * POKEMON_SPRITES_PER_TRAINER, 2, 3); // offset 2 for effects
 }
 
 static void new_player_sprites(GBC_Graphics *graphics) {
-  s_player_sprite = rand() % 8;
-  s_player_color = rand() % 6;
+  s_player_sprite = 21; //rand() % 22;
+  // s_player_color = rand() % 6;
   load_player_sprites(graphics);
 }
 
@@ -204,6 +204,33 @@ static void set_player_sprites(GBC_Graphics *graphics, bool walk_sprite, bool x_
   if (x_flip) {
     GBC_Graphics_oam_swap_sprite_tiles(graphics, 2, 3);
     GBC_Graphics_oam_swap_sprite_tiles(graphics, 4, 5);
+  }
+}
+
+static void hide_preview_sprites(GBC_Graphics *graphics, uint8_t oam_offset) {
+  for (uint8_t i = 0; i < 4; i++) {
+    GBC_Graphics_oam_hide_sprite(graphics, oam_offset + i);
+  }
+}
+
+static void set_preview_sprites(GBC_Graphics *graphics, GPoint pos, PlayerDirection dir, bool walk_sprite, bool x_flip, uint8_t oam_offset) {
+  uint8_t new_tile = pokemon_trainer_sprite_offsets[dir + walk_sprite * 4];
+  for (uint8_t i = 0; i < 4; i++) {
+    GBC_Graphics_oam_set_sprite_tile(graphics, oam_offset + i, (new_tile * POKEMON_TILES_PER_SPRITE) + i + 2);
+    GBC_Graphics_oam_set_sprite_x_flip(graphics, oam_offset + i, x_flip);
+  }
+
+  if (x_flip) {
+    GBC_Graphics_oam_swap_sprite_tiles(graphics, oam_offset, oam_offset + 1);
+    GBC_Graphics_oam_swap_sprite_tiles(graphics, oam_offset + 2, oam_offset + 3);
+  }
+
+  for (uint8_t y = 0; y < 2; y++) {
+    for (uint8_t x = 0; x < 2; x++) {
+      GBC_Graphics_oam_set_sprite_pos(graphics, oam_offset + x + 2 * y, (pos.x + x) * 8 + 8, (pos.y + y) * 8 + 16);
+      GBC_Graphics_oam_set_sprite_attrs(graphics, oam_offset + x + 2 * y, GBC_Graphics_attr_make(0, 3, false, false, false));
+      GBC_Graphics_bg_set_tile_priority(graphics, pos.x + x, pos.y + y, false);
+    }
   }
 }
 
@@ -470,9 +497,7 @@ static void load_blocks_in_direction(GBC_Graphics *graphics, PlayerDirection dir
 static int check_for_object(uint16_t target_x, uint16_t target_y) {
   uint16_t block_x = target_x >> 4;
   uint16_t block_y = target_y >> 4;
-  APP_LOG(APP_LOG_LEVEL_DEBUG, "Checking block %d, %d on route %d...", block_x, block_y, s_route_num);
   for (uint16_t i = 0; i < sizeof(objects) >> 2; i++) {
-    APP_LOG(APP_LOG_LEVEL_DEBUG, "\tChecking object %d: Route %d, (%d, %d)", i, objects[i][0], objects[i][1], objects[i][2]);
     if (s_route_num == objects[i][0] && block_x == objects[i][1] && block_y == objects[i][2]) {
       return i;
     }
@@ -515,7 +540,9 @@ static void play(GBC_Graphics *graphics) {
     
     s_player_mode = P_WALK;
     s_walk_frame = 0;
-    s_flip_walk = !s_flip_walk;
+    if (s_player_sprite != 21) {
+      s_flip_walk = !s_flip_walk;
+    }
     GBC_Graphics_oam_set_sprite_priority(graphics, 4, false);
     GBC_Graphics_oam_set_sprite_priority(graphics, 5, false);
 
@@ -628,16 +655,18 @@ static void play(GBC_Graphics *graphics) {
             GBC_Graphics_oam_set_sprite_pos(graphics, 0, s_player_sprite_x, s_player_sprite_y + 4);
             GBC_Graphics_oam_set_sprite_pos(graphics, 1, s_player_sprite_x + 8, s_player_sprite_y + 4);
           #endif
-            // TODO: Uncomment to reenable wild encounters
-            // if (s_can_move && (rand() % WILD_ODDS == 0)) {
-            //   load_screen(graphics);
-            //   s_game_state = PG_BATTLE;
-            //   s_battle_state = PB_FLASH;
-            //   s_battle_frame = 0;
-            // }
             break;
           default:
             break;
+        }
+      }
+      if (s_walk_frame == 7 && s_can_move && (s_route_num == 0 || s_route_num == 1 || get_block_type(s_world_map, s_target_x+8, s_target_y) == GRASS)) {
+        // TODO: Uncomment to reenable wild encounters
+        if (rand() % WILD_ODDS == 0) {
+          load_screen(graphics);
+          s_game_state = PG_BATTLE;
+          s_battle_state = PB_FLASH;
+          s_battle_frame = 0;
         }
       }
       switch(s_walk_frame) {
@@ -863,16 +892,17 @@ static void draw_pause_menu(GBC_Graphics *graphics) {
 }
 
 void draw_option_menu(GBC_Graphics *graphics) {
-  draw_menu(graphics, GRect(OPTION_ROOT_X, OPTION_ROOT_Y, 18, 14), "MOVE MODE\n\nTURN MODE\n\nTEXT SPEED\n\nSPRITE\n\nCOLOR\n\nCANCEL", false, false);
-  set_num_menu_items(6);
+  draw_menu(graphics, GRect(OPTION_ROOT_X, OPTION_ROOT_Y, 18, 12), "MOVE MODE\n\nTURN MODE\n\nTEXT SPEED\n\nSPRITE\n\nCANCEL", false, false);
+  set_num_menu_items(5);
   draw_text_at_location(graphics, GPoint(OPTION_ROOT_X+9, OPTION_ROOT_Y+3), s_move_mode_toggle ? ":TOGGLE" : ":HOLD");
   draw_text_at_location(graphics, GPoint(OPTION_ROOT_X+9, OPTION_ROOT_Y+5), s_turn_mode_tilt ? ":TILT" : ":BUTTONS");
   draw_text_at_location(graphics, GPoint(OPTION_ROOT_X+9, OPTION_ROOT_Y+7), s_text_speed == 0 ? ":SLOW" : s_text_speed == 1 ? ":MID" : ":FAST");
   char data[4] = {0};
   snprintf(data, 4, ":%d", s_player_sprite);
   draw_text_at_location(graphics, GPoint(OPTION_ROOT_X+9, OPTION_ROOT_Y+9), data);
-  snprintf(data, 4, ":%d", s_player_color);
-  draw_text_at_location(graphics, GPoint(OPTION_ROOT_X+9, OPTION_ROOT_Y+11), data);
+  set_preview_sprites(graphics, GPoint(13, 11), D_DOWN, false, false, 8);
+  // snprintf(data, 4, ":%d", s_player_color);
+  // draw_text_at_location(graphics, GPoint(OPTION_ROOT_X+9, OPTION_ROOT_Y+11), data);
 }
 
 
@@ -1078,13 +1108,8 @@ static void battle(GBC_Graphics *graphics) {
       } else {
         snprintf(level_text, 8, "%d%c", s_enemy_pokemon_level, rand()%2 ? '^' : '+');
       }
-    #if defined(PBL_ROUND)
-      draw_uint_string_at_location(graphics, GPoint(1, 1), s_enemy_pokemon_name, 11);
-      draw_text_at_location(graphics, GPoint(4, 0), level_text);
-    #else
-      draw_uint_string_at_location(graphics, GPoint(1, 0), s_enemy_pokemon_name, 11);
-      draw_text_at_location(graphics, GPoint(4, 1), level_text);
-    #endif
+      draw_uint_string_at_location(graphics, GPoint(1, PBL_IF_ROUND_ELSE(1, 0)), s_enemy_pokemon_name, 11);
+      draw_text_at_location(graphics, GPoint(4, PBL_IF_ROUND_ELSE(2, 1)), level_text);
       draw_uint_string_at_location(graphics, GPoint(8, 7), s_player_pokemon_name, 11);
       if (s_player_pokemon_level < 100) {
         snprintf(level_text, 8, "|%-2d%c", s_player_pokemon_level, rand()%2 ? '^' : '+');
@@ -1296,7 +1321,7 @@ static void save() {
     .player_y = s_player_y,
     .player_direction = s_player_direction,
     .player_sprite = s_player_sprite,
-    .player_color = s_player_color,
+    // .player_color = s_player_color,
     .move_mode_toggle = s_move_mode_toggle,
     .turn_mode_tilt = s_turn_mode_tilt,
     .text_speed = s_text_speed,
@@ -1335,7 +1360,7 @@ void Pokemon_step(GBC_Graphics *graphics) {
       break;
     case PG_DIALOGUE:
       if (get_dialogue_state() != D_IDLE) {
-        step_dialogue(graphics, s_select_pressed);
+        step_dialogue(graphics, s_select_pressed, s_text_speed);
       } else {
         if (s_prev_game_state == PG_PLAY) {
           load_screen(graphics);
@@ -1424,7 +1449,7 @@ static void fill_str(char *str, char fill, uint8_t num) {
 }
 
 static void set_stat(char *buffer, char *str, int data) {
-  fill_str(buffer, '_', 14);
+  fill_str(buffer, '.', 14);
   memcpy(buffer, str, strlen(str));
   char data_buffer[14] = {0};
   snprintf(data_buffer, 14, "%d", data);
@@ -1505,16 +1530,18 @@ void Pokemon_handle_select_click(GBC_Graphics *graphics) {
               draw_option_menu(graphics);
               break;
             case 3: // Sprite
-              s_player_sprite = (s_player_sprite + 1) % (2 + (s_player_level / 10));
+              s_player_sprite = (s_player_sprite + 1) % (2 + (s_player_level / 5));
+              load_player_sprites(graphics);
               draw_option_menu(graphics);
               break;
-            case 4: // Color
-              s_player_color = (s_player_color + 1) % (2 + ((s_player_level - 5) / 10));
-              draw_option_menu(graphics);
-              break;
+            // case 4: // Color
+            //   s_player_color = (s_player_color + 1) % (2 + ((s_player_level - 5) / 10));
+            //   draw_option_menu(graphics);
+            //   break;
             case 5: // Cancel
               s_menu_state = PM_BASE;
               set_cursor_pos(2);
+              hide_preview_sprites(graphics, 8);
               draw_pause_menu(graphics);
               break;
           }
@@ -1586,7 +1613,7 @@ void Pokemon_handle_select_click(GBC_Graphics *graphics) {
             s_player_y = data.player_y;
             s_player_direction = data.player_direction;
             s_player_sprite = data.player_sprite;
-            s_player_color = data.player_color;
+            // s_player_color = data.player_color;
             s_move_mode_toggle = data.move_mode_toggle;
             s_turn_mode_tilt = data.turn_mode_tilt;
             s_text_speed = data.text_speed;
@@ -1770,6 +1797,7 @@ void Pokemon_handle_back(GBC_Graphics *graphics) {
         case PM_OPTION:
           s_menu_state = PM_BASE;
           set_cursor_pos(2);
+          hide_preview_sprites(graphics, 8);
           draw_pause_menu(graphics);
           break;
         default:

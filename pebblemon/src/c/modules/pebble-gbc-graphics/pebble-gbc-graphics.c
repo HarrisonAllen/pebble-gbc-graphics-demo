@@ -112,6 +112,20 @@ uint8_t GBC_Graphics_get_screen_height(GBC_Graphics *self) {
   return self->screen_height;
 }
 
+void GBC_Graphics_vram_move_tiles(GBC_Graphics *self, uint8_t src_vram_bank, uint8_t src_tile_offset, 
+                             uint8_t dest_vram_bank, uint8_t dest_tile_offset, uint8_t num_tiles_to_move, bool swap) {
+  uint8_t *src_vram_offset = self->vram + VRAM_BANK_SIZE * src_vram_bank + src_tile_offset * TILE_SIZE;
+  uint8_t *dest_vram_offset = self->vram + VRAM_BANK_SIZE * dest_vram_bank + dest_tile_offset * TILE_SIZE;
+  size_t data_size = num_tiles_to_move * TILE_SIZE;
+  if (swap) {
+    uint8_t temp[data_size];
+    memcpy(temp, dest_vram_offset, data_size);
+    memcpy(dest_vram_offset, src_vram_offset, data_size);
+    memcpy(src_vram_offset, temp, data_size);
+  } else {
+    memcpy(dest_vram_offset, src_vram_offset, data_size);
+  }
+}
 
 void GBC_Graphics_load_from_tilesheet_into_vram(GBC_Graphics *self, uint32_t tilesheet_resource, uint16_t tilesheet_tile_offset, 
                                             uint16_t tiles_to_load, uint16_t vram_tile_offset, uint8_t vram_bank_number) {

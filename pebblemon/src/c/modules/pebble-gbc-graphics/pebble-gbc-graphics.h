@@ -329,6 +329,20 @@ uint8_t GBC_Graphics_get_screen_width(GBC_Graphics *self);
 uint8_t GBC_Graphics_get_screen_height(GBC_Graphics *self);
 
 /**
+ * Moves tiles from one vram bank and position to another
+ * 
+ * @param self A pointer to the target GBC Graphics object
+ * @param src_vram_bank The VRAM bank to draw from, 0 to 3
+ * @param src_tile_offset The tile offset to swap from
+ * @param dest_vram_bank The VRAM bank to edit, 0 to 3
+ * @param dest_tile_offset The tile offset to swap into
+ * @param num_tiles_to_move The number of tiles to move
+ * @param swap If the src and dest tiles should be swapped, otherwise just copies from dest
+ */
+void GBC_Graphics_vram_move_tiles(GBC_Graphics *self, uint8_t src_vram_bank, uint8_t src_tile_offset, 
+                             uint8_t dest_vram_bank, uint8_t dest_tile_offset, uint8_t num_tiles_to_move, bool swap);
+
+/**
  * Loads tiles from a tilesheet in storage into vram
  * 
  * @param self A pointer to the target GBC Graphics object
@@ -828,7 +842,7 @@ void GBC_Graphics_bg_set_tile_priority(GBC_Graphics *self, uint8_t x, uint8_t y,
  * @param src_y The y position of the source tile, 0 to 31
  * @param dest_x The x position of the destination tile, 0 to 31
  * @param dest_y The y position of the destination tile, 0 to 31
- * @param swap If the src and dest tiles should be swapped, otherwise overrides
+ * @param swap If the src and dest tiles should be swapped, otherwise just copies from dest
  */
 void GBC_Graphics_bg_move_tile(GBC_Graphics *self, uint8_t src_x, uint8_t src_y, uint8_t dest_x, uint8_t dest_y, bool swap);
 
@@ -996,7 +1010,7 @@ void GBC_Graphics_window_set_tile_priority(GBC_Graphics *self, uint8_t x, uint8_
  * @param src_y The y position of the source tile, 0 to 31
  * @param dest_x The x position of the destination tile, 0 to 31
  * @param dest_y The y position of the destination tile, 0 to 31
- * @param swap If the src and dest tiles should be swapped, otherwise overrides
+ * @param swap If the src and dest tiles should be swapped, otherwise just copies from dest
  */
 void GBC_Graphics_window_move_tile(GBC_Graphics *self, uint8_t src_x, uint8_t src_y, uint8_t dest_x, uint8_t dest_y, bool swap);
 

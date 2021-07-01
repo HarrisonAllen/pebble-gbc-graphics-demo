@@ -357,7 +357,7 @@ void draw_player_hp_bar(GBC_Graphics *graphics, uint16_t max_health, uint16_t cu
   draw_text_at_location(graphics, GPoint(9, 10), player_hp);
 }
 
-void draw_exp_bar(GBC_Graphics *graphics, uint16_t max_exp, uint16_t cur_exp) {
+void draw_exp_bar(GBC_Graphics *graphics, int max_exp, int cur_exp) {
   uint8_t bar_len = 8;
   GPoint bar_start = GPoint(15, 11);
 #if defined(PBL_COLOR)

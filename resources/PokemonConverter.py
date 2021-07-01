@@ -538,14 +538,14 @@ if __name__ == "__main__":
     
     # convert_map(f'resources/SourceImages/Pokemon/Map/Routes/{"NationalPark"}/Output/', 'NationalPark', 'convert')
     # convert_tilesheet_helper("resources/SourceImages/Pokemon/Map/Routes/World/Output/", "World")
-    # convert_2bpp_tilesheet_helper("resources/SourceImages/Pokemon/Map/Routes/AnimationTiles/", "AnimationTilesheet")
+    convert_2bpp_tilesheet_helper("resources/SourceImages/Pokemon/Map/Routes/AnimationTiles/", "AnimationTilesheet")
     # convert_2bpp_tilesheet_helper("resources/SourceImages/Pokemon/Map/Routes/AnimationTiles/", "AnimationTilesheet~bw")
     # convert_2bpp_tilesheet_helper("resources/SourceImages/Pokemon/Map/Routes/World/", "WorldTilesheet~bw")
 
 
     # convert_sprites("resources/SourceImages/Pokemon/PokemonSprites/")
 
-    convert_tilesheet_to_2bpp("resources/SourceImages/Pokemon/UI/MenuTilesheet.png", "resources/SourceImages/Pokemon/UI/Output/PokemonMenuTilesheet~color.bin")
-    convert_tilesheet_to_2bpp("resources/SourceImages/Pokemon/UI/MenuTilesheet~bw.png", "resources/SourceImages/Pokemon/UI/Output/PokemonMenuTilesheet~bw.bin")
+    # convert_tilesheet_to_2bpp("resources/SourceImages/Pokemon/UI/MenuTilesheet.png", "resources/SourceImages/Pokemon/UI/Output/PokemonMenuTilesheet~color.bin")
+    # convert_tilesheet_to_2bpp("resources/SourceImages/Pokemon/UI/MenuTilesheet~bw.png", "resources/SourceImages/Pokemon/UI/Output/PokemonMenuTilesheet~bw.bin")
     
     # convert_dialogue_to_bin("resources/MenuMockups/Dialogue/PokemonDialogue.txt", "resources/MenuMockups/Dialogue/PokemonDialogue_text.bin",  "resources/MenuMockups/Dialogue/PokemonDialogue_data.bin")

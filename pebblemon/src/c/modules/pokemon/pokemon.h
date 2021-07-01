@@ -13,7 +13,7 @@
 #define STATS_ROOT_X 0
 #define STATS_ROOT_Y 0
 #define OPTION_ROOT_X 0
-#define OPTION_ROOT_Y 3
+#define OPTION_ROOT_Y 2
 #define START_MENU_ROOT_X 0
 #define START_MENU_ROOT_Y 1
 #define START_INFO_ROOT_X 1
@@ -41,6 +41,12 @@
 #define PLAYER_ORIGIN_X 16*27
 #define PLAYER_ORIGIN_Y 16*7
 
+#define TILE_BANK_MENU 1
+#define TILE_BANK_WORLD 0
+#define TILE_BANK_SPRITES 3
+#define TILE_BANK_ANIMS 1
+#define TILE_OFFSET_ANIMS 200
+
 typedef struct {
     uint8_t route_num;
     uint16_t player_x;
@@ -50,6 +56,7 @@ typedef struct {
     uint8_t player_direction;
     bool move_mode_toggle;
     bool turn_mode_tilt;
+    bool backlight_on;
     uint8_t text_speed;
     uint8_t player_level;
     int player_exp;

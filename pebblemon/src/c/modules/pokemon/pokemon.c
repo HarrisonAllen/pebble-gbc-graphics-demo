@@ -56,11 +56,23 @@ static uint8_t s_escape_odds;
 // - Make cut trees cut
 // -- "Would you like to use cut?"
 // -- Replace block on map w/ empty square, & walkable
+// -- Draw cut tree sprite on top of where tree was
+// -- Move halves of tree in opposite direction, blinking
 // - Incorporate:
-// -- Animations
+// -- Animation palettes
 // -- All the other data
 // -- All of the objects
-// - (Optional) add in a check for if a tile is out of bounds, then clamp it to bounds
+// - (Optional) add in a check for if a tile is out of bounds, then clamp it to bounds instead of error->crash
+// - Collectible items:
+// -- Running Shoes (double move speed) - Forest, top half
+// -- Cut (enables cutting of trees) - Forest, bottom half
+// -- Lucky Egg (double exp) - National Park, top right
+// -- Berry (heals 10HP when below half, one time use) - Berry tree route 1, can come back for more
+// -- Leftovers (restore a 1/16 HP each turn) - Far right trash can National Park
+// -- Focus Band (12% chance to prevent fainting) - Cave, in path 
+// -- Protein (Raises attack stat by 25% each battle) - Route 1, top right
+// -- Iron (Raises defense stat by 25% each battle) - Cave, on stairs
+// - Redo cave map to replace ladder blocked by rocks with an item
 
 static GPoint direction_to_point(PlayerDirection dir) {
     switch (dir) {
@@ -579,10 +591,12 @@ static void play(GBC_Graphics *graphics) {
       }
       GBC_Graphics_oam_set_sprite_priority(graphics, 4, false);
       GBC_Graphics_oam_set_sprite_priority(graphics, 5, false);
-
-      PokemonSquareInfo block_type = get_block_type(s_world_map, s_target_x+8, s_target_y);
-      // APP_LOG(APP_LOG_LEVEL_DEBUG, "Block at %d, %d yielded type %d", s_target_x+8, s_target_y, block_type);
-      if (block_type == OBJECT) {
+      
+      // TODO: Check if current block is CLIFF_N, then check if direction != north for can walk
+      PokemonSquareInfo current_block_type = get_block_type(s_world_map, s_player_x, s_player_y);
+      PokemonSquareInfo target_block_type = get_block_type(s_world_map, s_target_x+8, s_target_y);
+      // APP_LOG(APP_LOG_LEVEL_DEBUG, "Block at %d, %d yielded type %d", s_target_x+8, s_target_y, target_block_type);
+      if (target_block_type == OBJECT) {
         if (s_move_mode_toggle) {
           s_move_toggle = false;
         }
@@ -620,15 +634,17 @@ static void play(GBC_Graphics *graphics) {
           }
         }
       } else {
-        if ((block_type == CLIFF_S && s_player_direction == D_DOWN)
-            || (block_type == CLIFF_W && s_player_direction == D_LEFT)
-            || (block_type == CLIFF_E && s_player_direction == D_RIGHT)) {
+        if ((target_block_type == CLIFF_S && s_player_direction == D_DOWN)
+            || (target_block_type == CLIFF_W && s_player_direction == D_LEFT)
+            || (target_block_type == CLIFF_E && s_player_direction == D_RIGHT)) {
           s_target_x += direction_to_point(s_player_direction).x * (TILE_WIDTH * 2);
           s_target_y += direction_to_point(s_player_direction).y * (TILE_HEIGHT * 2);
           s_player_mode = P_JUMP;
           s_can_move = true;
         } else {
-          s_can_move = (block_type == WALK || block_type == GRASS);
+          s_can_move = (target_block_type == WALK || target_block_type == GRASS
+                        || (target_block_type == CLIFF_N && s_player_direction != D_DOWN));
+          s_can_move &= !(current_block_type == CLIFF_N && s_player_direction == D_UP);
         }
         // if block type == cliff and direction == (based on cliff)
         // target pos = + some more, mode = jump

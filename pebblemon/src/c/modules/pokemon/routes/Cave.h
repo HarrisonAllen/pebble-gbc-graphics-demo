@@ -107,7 +107,7 @@ uint8_t cave_block_types[] = {
 	7,
 	7,
 	3,
-	0,
+	8,
 	0,
 	0,
 	0,

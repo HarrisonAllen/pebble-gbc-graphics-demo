@@ -32,7 +32,8 @@ typedef enum {
 	CLIFF_S, // Jump from North
 	CLIFF_W, // Jump from East
 	CLIFF_E, // Jump from West
-	WATER
+	WATER,
+	CLIFF_N, // No jump, can't walk from North
 } PokemonSquareInfo;
 
 uint8_t *chunks[] = {

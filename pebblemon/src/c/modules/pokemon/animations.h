@@ -14,4 +14,4 @@
 
 void init_anim_tiles(GBC_Graphics *graphics, uint8_t anim_bank, uint8_t anim_offset);
 
-void animate_tiles(GBC_Graphics *graphics, uint8_t tile_bank, bool is_cave);
+void animate_tiles(GBC_Graphics *graphics, uint8_t tile_bank, uint8_t route);

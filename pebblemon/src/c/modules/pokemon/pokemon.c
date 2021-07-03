@@ -52,14 +52,12 @@ static uint8_t s_escape_odds;
 
 
 // TODO: 
-// - Add in animation tiles
 // - Make cut trees cut
 // -- "Would you like to use cut?"
 // -- Replace block on map w/ empty square, & walkable
 // -- Draw cut tree sprite on top of where tree was
 // -- Move halves of tree in opposite direction, blinking
 // - Incorporate:
-// -- Animation palettes
 // -- All the other data
 // -- All of the objects
 // - (Optional) add in a check for if a tile is out of bounds, then clamp it to bounds instead of error->crash
@@ -72,7 +70,7 @@ static uint8_t s_escape_odds;
 // -- Focus Band (12% chance to prevent fainting) - Cave, in path 
 // -- Protein (Raises attack stat by 25% each battle) - Route 1, top right
 // -- Iron (Raises defense stat by 25% each battle) - Cave, on stairs
-// - Redo cave map to replace ladder blocked by rocks with an item
+// - Add in a window overlay when entering a new route
 
 static GPoint direction_to_point(PlayerDirection dir) {
     switch (dir) {
@@ -545,7 +543,7 @@ static void set_bg_palettes_to_color(GBC_Graphics *graphics, uint8_t color) {
 static void play(GBC_Graphics *graphics) {
   s_anim_frame = (s_anim_frame + 1) % 8;
   if (s_anim_frame == 0) {
-    animate_tiles(graphics, TILE_BANK_WORLD, s_route_num == 0);
+    animate_tiles(graphics, TILE_BANK_WORLD, s_route_num);
   }
   s_poll_frame = (s_poll_frame + 1) % 8;
   if (s_player_mode == P_STAND) {

@@ -437,8 +437,8 @@ def convert_map(base_folder, name, to_do):
         # convert_blocks_to_tiles(base_folder + "Block_Templates/", base_folder + "Tile_Templates/", base_folder + "Output/Blocks.txt")
         # convert_tiles_to_palettes(base_folder + "Tile_Templates/", base_folder + "../BG_Palettes.png", base_folder + "Output/Tile_Palettes.txt")
         # convert_paletted_tilesheet_to_2bpp(base_folder + f"{name}Tilesheet.png", base_folder + "../BG_Palettes.png", base_folder + "Output/PokemonTilesheet~color.bin")
-        # convert_palettes_to_commands(base_folder + "../BG_Palettes.png", base_folder + "Output/BG_Palette_Commands.txt")
-        convert_blocks_to_collision(base_folder + "Block_Templates/", base_folder + "../Block_Collision/", base_folder + "Output/Block_Collision.txt")
+        convert_palettes_to_commands(base_folder + "../BG_Palettes.png", base_folder + "Output/BG_Palette_Commands.txt")
+        # convert_blocks_to_collision(base_folder + "Block_Templates/", base_folder + "../Block_Collision/", base_folder + "Output/Block_Collision.txt")
     elif to_do == "b&w":
         # For BW, I generated a 1 bit, Floyd-Steinberg dithered image of the route, and manually copied the corresponding tiles to a tilesheet
         # Actually, the most recent time I did a flat conversion to 1-bit, no dithering. Some minor manual editing. Looks cleaner
@@ -536,7 +536,7 @@ if __name__ == "__main__":
     #     convert_map(f'resources/SourceImages/Pokemon/Map/Routes/{route}/Output/', route, 'convert')
     #     print(f'Conversion complete!')
     
-    convert_map(f'resources/SourceImages/Pokemon/Map/Routes/{"Cave"}/Output/', 'Cave', 'convert')
+    convert_map(f'resources/SourceImages/Pokemon/Map/Routes/{"Forest"}/Output/', 'Forest', 'convert')
     # convert_tilesheet_helper("resources/SourceImages/Pokemon/Map/Routes/World/Output/", "World")
     # convert_2bpp_tilesheet_helper("resources/SourceImages/Pokemon/Map/Routes/AnimationTiles/", "AnimationTilesheet")
     # convert_2bpp_tilesheet_helper("resources/SourceImages/Pokemon/Map/Routes/AnimationTiles/", "AnimationTilesheet~bw")

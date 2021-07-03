@@ -75,13 +75,13 @@ void init_anim_tiles(GBC_Graphics *graphics, uint8_t anim_bank, uint8_t anim_off
     s_anim_frame = 0;
 }
 
-void animate_tiles(GBC_Graphics *graphics, uint8_t tile_bank, bool is_cave) {
+void animate_tiles(GBC_Graphics *graphics, uint8_t tile_bank, uint8_t route) {
     for (uint8_t i = 0; i < NUM_ANIMATIONS; i++) {
     // for (uint8_t i = 0; i < sizeof(anim_tiles) / sizeof(anim_tiles[0]); i++) {
         GBC_Graphics_vram_move_tiles(graphics, s_anim_bank, s_anim_offset + anim_tiles[i][s_anim_frame % NUM_ANIM_FRAMES], 
                                      tile_bank, anim_tile_offsets[i], 1, false);
     }
-    if (is_cave) {
+    if (route == 0) { // Cave
         GBC_Graphics_set_bg_palette_array(graphics, WATER_PALETTE, &water_palettes[1][((s_anim_frame % 16) / 4) * 4]);
     } else {
         GBC_Graphics_set_bg_palette_array(graphics, WATER_PALETTE, &water_palettes[0][((s_anim_frame % 8) / 2) * 4]);

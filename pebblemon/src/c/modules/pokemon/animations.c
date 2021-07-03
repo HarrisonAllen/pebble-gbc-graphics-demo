@@ -3,33 +3,66 @@
 static uint8_t s_anim_bank, s_anim_offset;
 static uint8_t s_anim_frame;
 
-const uint8_t tile_water_cave_swaps[] = {
+uint8_t tile_water_cave_swaps[] = {
     6, 6, 7, 7, 8, 8, 9, 9, 8, 8, 7, 7, 6, 6, 7, 7, 8, 8, 9, 9, 8, 8, 7, 7, 
 };
-const uint8_t tile_water_swaps[] = {
+uint8_t tile_water_swaps[] = {
     2, 2, 3, 3, 4, 4, 5, 5, 2, 2, 3, 3, 4, 4, 5, 5, 2, 2, 3, 3, 4, 4, 5, 5, 
 };
 
-const uint8_t tile_fountain_swaps[] = {
+uint8_t tile_fountain_swaps[] = {
     11, 12, 13, 14, 15, 16, 17, 18, 11, 12, 13, 14, 15, 16, 17, 18, 11, 12, 13, 14, 15, 16, 17, 18, 
 };
 
-const uint8_t tile_flower_swaps[] = {
+uint8_t tile_flower_swaps[] = {
     0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 0, 0, 1, 1, 
 };
 
-const uint8_t anim_tile_offsets[] = {
+uint8_t anim_tile_offsets[] = {
     TILE_WATER_CAVE,
     TILE_WATER,
     TILE_FOUNTAIN,
     TILE_FLOWER
 };
 
-const uint8_t *anim_tiles[] = {
+uint8_t *anim_tiles[] = {
     tile_water_cave_swaps,
     tile_water_swaps,
     tile_fountain_swaps,
     tile_flower_swaps
+};
+
+uint8_t cave_water_palettes[] = {
+#if defined(PBL_COLOR)
+    0b11011011, 0b11000111, 0b11000010, 0b11000000, 
+    0b11000111, 0b11000111, 0b11000010, 0b11000000, 
+    0b11000010, 0b11000111, 0b11000010, 0b11000000, 
+    0b11000111, 0b11000111, 0b11000010, 0b11000000, 
+#else
+    0, 0, 1, 1,
+    0, 0, 1, 1,
+    0, 0, 1, 1,
+    0, 0, 1, 1,
+#endif
+};
+
+uint8_t main_water_palettes[] = {
+#if defined(PBL_COLOR)
+    0b11111111, 0b11101011, 0b11010111, 0b11000000, 
+    0b11101011, 0b11101011, 0b11010111, 0b11000000, 
+    0b11010111, 0b11101011, 0b11010111, 0b11000000, 
+    0b11101011, 0b11101011, 0b11010111, 0b11000000, 
+#else
+    0, 0, 1, 1,
+    0, 0, 1, 1,
+    0, 0, 1, 1,
+    0, 0, 1, 1,
+#endif
+};
+
+uint8_t *water_palettes[] = { 
+    main_water_palettes,
+    cave_water_palettes,
 };
 
 void init_anim_tiles(GBC_Graphics *graphics, uint8_t anim_bank, uint8_t anim_offset) {
@@ -42,12 +75,17 @@ void init_anim_tiles(GBC_Graphics *graphics, uint8_t anim_bank, uint8_t anim_off
     s_anim_frame = 0;
 }
 
-void animate_tiles(GBC_Graphics *graphics, uint8_t tile_bank) {
+void animate_tiles(GBC_Graphics *graphics, uint8_t tile_bank, bool is_cave) {
     for (uint8_t i = 0; i < NUM_ANIMATIONS; i++) {
     // for (uint8_t i = 0; i < sizeof(anim_tiles) / sizeof(anim_tiles[0]); i++) {
-        GBC_Graphics_vram_move_tiles(graphics, s_anim_bank, s_anim_offset + anim_tiles[i][s_anim_frame], 
+        GBC_Graphics_vram_move_tiles(graphics, s_anim_bank, s_anim_offset + anim_tiles[i][s_anim_frame % NUM_ANIM_FRAMES], 
                                      tile_bank, anim_tile_offsets[i], 1, false);
-    }    
+    }
+    if (is_cave) {
+        GBC_Graphics_set_bg_palette_array(graphics, WATER_PALETTE, &water_palettes[1][((s_anim_frame % 16) / 4) * 4]);
+    } else {
+        GBC_Graphics_set_bg_palette_array(graphics, WATER_PALETTE, &water_palettes[0][((s_anim_frame % 8) / 2) * 4]);
+    }
     // s_anim_frame = (s_anim_frame + 1) % (sizeof(anim_tiles[0]) / sizeof(anim_tiles[0][0]));
-    s_anim_frame = (s_anim_frame + 1) % NUM_ANIM_FRAMES;
+    s_anim_frame = (s_anim_frame + 1) % MAX_ANIM_FRAMES;
 }

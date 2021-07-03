@@ -545,7 +545,7 @@ static void set_bg_palettes_to_color(GBC_Graphics *graphics, uint8_t color) {
 static void play(GBC_Graphics *graphics) {
   s_anim_frame = (s_anim_frame + 1) % 8;
   if (s_anim_frame == 0) {
-    animate_tiles(graphics, TILE_BANK_WORLD);
+    animate_tiles(graphics, TILE_BANK_WORLD, s_route_num == 0);
   }
   s_poll_frame = (s_poll_frame + 1) % 8;
   if (s_player_mode == P_STAND) {
@@ -646,9 +646,6 @@ static void play(GBC_Graphics *graphics) {
                         || (target_block_type == CLIFF_N && s_player_direction != D_DOWN));
           s_can_move &= !(current_block_type == CLIFF_N && s_player_direction == D_UP);
         }
-        // if block type == cliff and direction == (based on cliff)
-        // target pos = + some more, mode = jump
-
         if (!s_can_move) {
           s_target_x = s_player_x;
           s_target_y = s_player_y;
@@ -1442,7 +1439,6 @@ static void battle(GBC_Graphics *graphics) {
 }
 
 static void save() {
-  // TODO: Add new data
   PokemonSaveData data = (PokemonSaveData) {
     .route_num = s_route_num,
     .player_x = s_player_x,

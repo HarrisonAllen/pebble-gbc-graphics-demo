@@ -339,7 +339,11 @@ static void draw_hp_bar(GBC_Graphics *graphics, uint8_t palette, GPoint bar_star
     GBC_Graphics_bg_set_tile_and_attrs(graphics, bar_start.x+bar_pos, bar_start.y, BATTLE_HEALTH_FULL, attrs);
   }
   if (bar_pos < bar_len) {
-    GBC_Graphics_bg_set_tile_and_attrs(graphics, bar_start.x+bar_pos, bar_start.y, BATTLE_HEALTH_EMPTY+last_bar_len, attrs);
+    if (num_full_bars == 0 && last_bar_len == 0 && cur_hp != 0) {
+      GBC_Graphics_bg_set_tile_and_attrs(graphics, bar_start.x+bar_pos, bar_start.y, BATTLE_HEALTH_EMPTY+1, attrs);
+    } else {
+      GBC_Graphics_bg_set_tile_and_attrs(graphics, bar_start.x+bar_pos, bar_start.y, BATTLE_HEALTH_EMPTY+last_bar_len, attrs);
+    }
   }
   for (bar_pos++; bar_pos < bar_len; bar_pos++) {
     GBC_Graphics_bg_set_tile_and_attrs(graphics, bar_start.x+bar_pos, bar_start.y, BATTLE_HEALTH_EMPTY, attrs);

@@ -74,7 +74,6 @@ static bool s_player_goes_first;
 // -- Protein (Raises attack stat by 25% each battle) - Route 1, top right ***IMPLEMENTED***
 // -- Iron (Raises defense stat by 25% each battle) - Cave, on stairs ***IMPLEMENTED***
 // - Add in a window overlay when entering a new route
-// - Add random turn order
 
 static GPoint direction_to_point(PlayerDirection dir) {
     switch (dir) {
@@ -599,19 +598,26 @@ static void play(GBC_Graphics *graphics) {
       PokemonSquareInfo target_block_type = get_block_type(s_world_map, s_target_x+8, s_target_y);
       // APP_LOG(APP_LOG_LEVEL_DEBUG, "Block at %d, %d yielded type %d", s_target_x+8, s_target_y, target_block_type);
       if (target_block_type == OBJECT) {
-        if (s_move_mode_toggle) {
-          s_move_toggle = false;
-        }
         int object_num = check_for_object(s_target_x+8, s_target_y);
         // APP_LOG(APP_LOG_LEVEL_DEBUG, "Check at %d, %d yielded object %d", s_target_x+8, s_target_y, object_num);
         if (object_num != -1) {
+          if (s_move_mode_toggle) {
+            s_move_toggle = false;
+          }
           PokemonObjectTypes object_type = objects[object_num][3];
           const int16_t *data = &objects[object_num][4];
           switch (object_type) {
             case PO_NONE:
               break;
             case PO_TREE:
-            case PO_SIGN:
+              load_screen(graphics);
+              begin_dialogue_from_string(graphics, DIALOGUE_BOUNDS, DIALOGUE_ROOT, "This tree can be\nCUT!", true);
+              s_prev_game_state = s_game_state;
+              s_game_state = PG_DIALOGUE;
+              s_player_mode = P_STAND;
+              s_can_move = false;
+              break;
+            case PO_TEXT:
               load_screen(graphics);
               begin_dialogue(graphics, DIALOGUE_BOUNDS, DIALOGUE_ROOT, data[0], true);
               s_prev_game_state = s_game_state;
@@ -632,8 +638,11 @@ static void play(GBC_Graphics *graphics) {
               s_can_move = true;
             } break;
             default:
+              s_can_move = false;
               break;
           }
+        } else {
+          s_can_move = false;
         }
       } else {
         if ((target_block_type == CLIFF_S && s_player_direction == D_DOWN)

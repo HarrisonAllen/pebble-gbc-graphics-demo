@@ -536,7 +536,7 @@ if __name__ == "__main__":
     #     convert_map(f'resources/SourceImages/Pokemon/Map/Routes/{route}/Output/', route, 'convert')
     #     print(f'Conversion complete!')
     
-    convert_map(f'resources/SourceImages/Pokemon/Map/Routes/{"Forest"}/Output/', 'Forest', 'convert')
+    # convert_map(f'resources/SourceImages/Pokemon/Map/Routes/{"Forest"}/Output/', 'Forest', 'convert')
     # convert_tilesheet_helper("resources/SourceImages/Pokemon/Map/Routes/World/Output/", "World")
     # convert_2bpp_tilesheet_helper("resources/SourceImages/Pokemon/Map/Routes/AnimationTiles/", "AnimationTilesheet")
     # convert_2bpp_tilesheet_helper("resources/SourceImages/Pokemon/Map/Routes/AnimationTiles/", "AnimationTilesheet~bw")
@@ -548,4 +548,4 @@ if __name__ == "__main__":
     # convert_tilesheet_to_2bpp("resources/SourceImages/Pokemon/UI/MenuTilesheet.png", "resources/SourceImages/Pokemon/UI/Output/PokemonMenuTilesheet~color.bin")
     # convert_tilesheet_to_2bpp("resources/SourceImages/Pokemon/UI/MenuTilesheet~bw.png", "resources/SourceImages/Pokemon/UI/Output/PokemonMenuTilesheet~bw.bin")
     
-    # convert_dialogue_to_bin("resources/MenuMockups/Dialogue/PokemonDialogue.txt", "resources/MenuMockups/Dialogue/PokemonDialogue_text.bin",  "resources/MenuMockups/Dialogue/PokemonDialogue_data.bin")
+    convert_dialogue_to_bin("resources/MenuMockups/Dialogue/PokemonDialogue.txt", "resources/MenuMockups/Dialogue/PokemonDialogue_text.bin",  "resources/MenuMockups/Dialogue/PokemonDialogue_data.bin")

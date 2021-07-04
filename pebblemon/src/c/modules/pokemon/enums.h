@@ -12,6 +12,7 @@ typedef enum {
 typedef enum {
   P_STAND,
   P_WALK,
+  P_RUN,
   P_JUMP,
   P_WARP,
   P_WARP_WALK

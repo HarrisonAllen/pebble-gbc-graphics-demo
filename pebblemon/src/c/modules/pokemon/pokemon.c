@@ -31,8 +31,8 @@ static uint8_t s_enemy_pokemon_level;
 static uint16_t s_player_max_pokemon_health, s_enemy_max_pokemon_health;
 static uint16_t s_player_pokemon_health, s_enemy_pokemon_health;
 static uint8_t s_player_pokemon_damage, s_enemy_pokemon_damage;
-static uint8_t s_player_pokemon_attack, s_enemy_pokemon_attack;
-static uint8_t s_player_pokemon_defense, s_enemy_pokemon_defense;
+static uint16_t s_player_pokemon_attack, s_enemy_pokemon_attack;
+static uint16_t s_player_pokemon_defense, s_enemy_pokemon_defense;
 static bool s_clear_dialogue = true;
 static uint8_t s_cur_bg_palettes[PALETTE_BANK_SIZE];
 static uint16_t s_stats_battles, s_stats_wins, s_stats_losses, s_stats_runs;
@@ -71,8 +71,8 @@ static bool s_player_goes_first;
 // -- Berry (heals 10HP when below half, one time use) - Berry tree route 1, can come back for more
 // -- Leftovers (restore a 1/16 HP each turn) - Far right trash can National Park
 // -- Focus Band (12% chance to prevent fainting) - Cave, in path 
-// -- Protein (Raises attack stat by 25% each battle) - Route 1, top right
-// -- Iron (Raises defense stat by 25% each battle) - Cave, on stairs
+// -- Protein (Raises attack stat by 25% each battle) - Route 1, top right ***IMPLEMENTED***
+// -- Iron (Raises defense stat by 25% each battle) - Cave, on stairs ***IMPLEMENTED***
 // - Add in a window overlay when entering a new route
 // - Add random turn order
 
@@ -1045,8 +1045,8 @@ static uint16_t calculate_health(uint8_t level) {
   return ((base + 50) * level) / 50 + 10;
 }
 
-static uint16_t calculate_damage(uint8_t level, uint8_t attack, uint8_t defense) {
-  uint8_t crit = (rand()%20==0) ? 1.5 : 1;
+static uint16_t calculate_damage(uint8_t level, uint16_t attack, uint16_t defense) {
+  uint16_t crit = (rand()%20==0) ? 1.5 : 1;
   return (uint16_t)(((((2.0 * level / 5.0 + 2.0) * attack * 80.0 / defense) / 50) + 2) * (rand()%16 + 85) / 100) * crit;
 }
 
@@ -1079,9 +1079,9 @@ static void generate_pokemon_stats() {
   s_enemy_max_pokemon_health = calculate_health(s_enemy_pokemon_level);
   s_player_pokemon_health = s_player_max_pokemon_health;
   s_enemy_pokemon_health = s_enemy_max_pokemon_health;
-  s_player_pokemon_attack = (rand()%15+5)*(s_player_level/10.0+1);
+  s_player_pokemon_attack = (rand()%15+5)*(s_player_level/10.0+1)*(HAS_ITEM(s_player_items, ITEM_ID_PROTEIN) ? 1.25 : 1.0);
   s_enemy_pokemon_attack = (rand()%15+5)*(s_player_level/10.0+1);
-  s_player_pokemon_defense = (rand()%15+5)*(s_enemy_pokemon_level/10.0+1);
+  s_player_pokemon_defense = (rand()%15+5)*(s_enemy_pokemon_level/10.0+1)*(HAS_ITEM(s_player_items, ITEM_ID_IRON) ? 1.25 : 1.0);
   s_enemy_pokemon_defense = (rand()%15+5)*(s_enemy_pokemon_level/10.0+1);
 }
 

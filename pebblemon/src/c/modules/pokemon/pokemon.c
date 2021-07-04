@@ -6,6 +6,7 @@
 #include "sprite_decompressor/decompressor.h"
 #include "enums.h"
 #include "animations.h"
+#include "items.h"
 
 static PlayerDirection s_player_direction = D_DOWN;
 static PlayerMode s_player_mode;
@@ -49,6 +50,8 @@ static int s_to_next_level, s_to_cur_level;
 static int s_exp_gained;
 static bool s_up_press_queued, s_down_press_queued;
 static uint8_t s_escape_odds;
+static uint8_t s_player_items = SET_ITEM(SET_ITEM(0, ITEM_ID_RUNNING_SHOES), ITEM_ID_LUCKY_EGG);
+static bool s_player_goes_first;
 
 
 // TODO: 
@@ -62,15 +65,16 @@ static uint8_t s_escape_odds;
 // -- All of the objects
 // - (Optional) add in a check for if a tile is out of bounds, then clamp it to bounds instead of error->crash
 // - Collectible items:
-// -- Running Shoes (double move speed) - Forest, top half
+// -- Running Shoes (double move speed) - Forest, top half ***IMPLEMENTED***
 // -- Cut (enables cutting of trees) - Forest, bottom half
-// -- Lucky Egg (double exp) - National Park, top right
+// -- Lucky Egg (double exp) - National Park, top right ***IMPLEMENTED***s
 // -- Berry (heals 10HP when below half, one time use) - Berry tree route 1, can come back for more
 // -- Leftovers (restore a 1/16 HP each turn) - Far right trash can National Park
 // -- Focus Band (12% chance to prevent fainting) - Cave, in path 
 // -- Protein (Raises attack stat by 25% each battle) - Route 1, top right
 // -- Iron (Raises defense stat by 25% each battle) - Cave, on stairs
 // - Add in a window overlay when entering a new route
+// - Add random turn order
 
 static GPoint direction_to_point(PlayerDirection dir) {
     switch (dir) {
@@ -582,7 +586,7 @@ static void play(GBC_Graphics *graphics) {
       s_target_x = s_player_x + direction_to_point(s_player_direction).x * (TILE_WIDTH * 2);
       s_target_y = s_player_y + direction_to_point(s_player_direction).y * (TILE_HEIGHT * 2);
       
-      s_player_mode = P_WALK;
+      s_player_mode = HAS_ITEM(s_player_items, ITEM_ID_RUNNING_SHOES) ? P_RUN : P_WALK;
       s_walk_frame = 0;
       if (s_player_sprite != 21) {
         s_flip_walk = !s_flip_walk;
@@ -739,6 +743,67 @@ static void play(GBC_Graphics *graphics) {
           set_player_sprites(graphics, false,  s_player_direction == D_RIGHT);
           break;
         case 2:
+          set_player_sprites(graphics, true,  s_player_direction == D_RIGHT 
+                             || ((s_player_direction == D_DOWN || s_player_direction == D_UP) && s_flip_walk));
+          break;
+        default:
+          break;
+      }
+      s_walk_frame++;
+      break;
+    case P_RUN:
+      if (s_can_move) {
+        s_player_x += direction_to_point(s_player_direction).x * 4;
+        s_player_y += direction_to_point(s_player_direction).y * 4;
+        GBC_Graphics_bg_move(graphics, direction_to_point(s_player_direction).x * 4, direction_to_point(s_player_direction).y * 4);
+      }
+      if (get_block_type(s_world_map, s_target_x+8, s_target_y) == GRASS) { // grass
+        switch(s_walk_frame) {
+          case 1:
+            GBC_Graphics_oam_set_sprite_pos(graphics, 0, s_player_sprite_x, s_player_sprite_y + 4);
+            GBC_Graphics_oam_set_sprite_pos(graphics, 1, s_player_sprite_x + 8, s_player_sprite_y + 4);
+            break;
+          case 2:
+            GBC_Graphics_oam_set_sprite_pos(graphics, 0, s_player_sprite_x - 1, s_player_sprite_y + 5);
+            GBC_Graphics_oam_set_sprite_pos(graphics, 1, s_player_sprite_x + 9, s_player_sprite_y + 5);
+            break;
+          case 3:
+          #if defined(PBL_COLOR)
+            GBC_Graphics_oam_hide_sprite(graphics, 0);
+            GBC_Graphics_oam_hide_sprite(graphics, 1);
+          #else
+            GBC_Graphics_oam_set_sprite_pos(graphics, 0, s_player_sprite_x, s_player_sprite_y + 4);
+            GBC_Graphics_oam_set_sprite_pos(graphics, 1, s_player_sprite_x + 8, s_player_sprite_y + 4);
+          #endif
+            break;
+          default:
+            break;
+        }
+      }
+      if (s_walk_frame == 3 && s_can_move && (s_route_num == 0 || s_route_num == 1 || get_block_type(s_world_map, s_target_x+8, s_target_y) == GRASS)) {
+        if (rand() % WILD_ODDS == 0) {
+          load_screen(graphics);
+          s_game_state = PG_BATTLE;
+          s_battle_state = PB_FLASH;
+          s_battle_frame = 0;
+          if (s_move_mode_toggle) {
+            s_move_toggle = false;
+          }
+        }
+      }
+      switch(s_walk_frame) {
+        case 3:
+          s_player_mode = P_STAND;
+        #if defined(PBL_COLOR)
+          if(get_block_type(s_world_map, s_player_x+8, s_player_y) == GRASS) {
+            GBC_Graphics_oam_set_sprite_priority(graphics, 4, true);
+            GBC_Graphics_oam_set_sprite_priority(graphics, 5, true);
+          }
+        #endif
+        case 0:
+          set_player_sprites(graphics, false,  s_player_direction == D_RIGHT);
+          break;
+        case 1:
           set_player_sprites(graphics, true,  s_player_direction == D_RIGHT 
                              || ((s_player_direction == D_DOWN || s_player_direction == D_UP) && s_flip_walk));
           break;
@@ -948,7 +1013,7 @@ static void draw_pause_menu(GBC_Graphics *graphics) {
 
 void draw_option_menu(GBC_Graphics *graphics) {
   draw_menu(graphics, GRect(OPTION_ROOT_X, OPTION_ROOT_Y, 18, 14), "MOVE MODE\n\nTURN MODE\n\nTEXT SPEED\n\nBACKLIGHT\n\nSPRITE\n\nCANCEL", false, false);
-  set_num_menu_items(5);
+  set_num_menu_items(6);
   draw_text_at_location(graphics, GPoint(OPTION_ROOT_X+9, OPTION_ROOT_Y+3), s_move_mode_toggle ? ":TOGGLE" : ":HOLD");
   draw_text_at_location(graphics, GPoint(OPTION_ROOT_X+9, OPTION_ROOT_Y+5), s_turn_mode_tilt ? ":TILT" : ":BUTTONS");
   draw_text_at_location(graphics, GPoint(OPTION_ROOT_X+9, OPTION_ROOT_Y+7), s_text_speed == 0 ? ":SLOW" : s_text_speed == 1 ? ":MID" : ":FAST");
@@ -1248,7 +1313,7 @@ static void battle(GBC_Graphics *graphics) {
           }
           draw_enemy_hp_bar(graphics, s_enemy_max_pokemon_health, s_enemy_pokemon_health);
         } else {
-          s_battle_state = PB_ENEMY_MOVE;
+          s_battle_state = s_player_goes_first ? PB_ENEMY_MOVE : PB_PLAYER_TURN_PROMPT;
         }
       }
       break;
@@ -1288,7 +1353,7 @@ static void battle(GBC_Graphics *graphics) {
           }
           draw_player_hp_bar(graphics, s_player_max_pokemon_health, s_player_pokemon_health);
         } else {
-          s_battle_state = PB_PLAYER_TURN_PROMPT;
+          s_battle_state = s_player_goes_first ? PB_PLAYER_TURN_PROMPT : PB_PLAYER_MOVE;
           s_battle_frame = 0;
         }
       }
@@ -1327,7 +1392,7 @@ static void battle(GBC_Graphics *graphics) {
     } break;
     case PB_EXPERIENCE:
       if (s_battle_frame == 0) {
-        s_exp_gained = calculate_exp_gain(s_enemy_pokemon_level, false);
+        s_exp_gained = calculate_exp_gain(s_enemy_pokemon_level, HAS_ITEM(s_player_items, ITEM_ID_LUCKY_EGG));
         char exp_dialogue[40];
         snprintf(exp_dialogue, 40, "Gained %d EXP!", s_exp_gained);
         begin_dialogue_from_string(graphics, DIALOGUE_BOUNDS, DIALOGUE_ROOT, exp_dialogue, true);
@@ -1783,7 +1848,8 @@ void Pokemon_handle_select_click(GBC_Graphics *graphics) {
           switch (get_cursor_pos()) {
             case 0: // Fight
               s_select_pressed = false;
-              s_battle_state = PB_PLAYER_MOVE;
+              s_player_goes_first = rand() % 2;
+              s_battle_state = s_player_goes_first ? PB_PLAYER_MOVE : PB_ENEMY_MOVE;
               break;
             case 1: // Run
               s_select_pressed = false;

@@ -18,12 +18,22 @@ const int16_t FO_DOOR_1[] = {1, 5, 10, PO_WARP, 2, 35*16, 20*16}; // Forest
 const int16_t FO_DOOR_2[] = {1, 5, 11, PO_WARP, 2, 35*16, 21*16};
 const int16_t FO_DOOR_3[] = {1, 5, 46, PO_WARP, 3, 53*16, 12*16};
 const int16_t FO_DOOR_4[] = {1, 5, 47, PO_WARP, 3, 53*16, 13*16};
+// Forest sign
+// Forest shrine top
+// Forest tree
 
 const int16_t NP_DOOR_1[] = {2, 11, 50, PO_WARP, 3, 27*16, 5*16}; // National Park
 const int16_t NP_DOOR_2[] = {2, 12, 50, PO_WARP, 3, 27*16, 5*16};
 const int16_t NP_DOOR_3[] = {2, 16, 5, PO_WARP, 0, 19*16, 5*16};
 const int16_t NP_DOOR_4[] = {2, 36, 20, PO_WARP, 1, 6*16, 10*16};
 const int16_t NP_DOOR_5[] = {2, 36, 21, PO_WARP, 1, 6*16, 11*16};
+// National Park Trash Can 1
+// National Park Trash Can 2
+// National Park Trash Can 3
+// National Park Trash Can 4
+// National Park Sign 1
+// National Park Sign 2
+// National Park Sign 3
 
 const int16_t R1_SIGN_1[] = {3, 51, 11, PO_SIGN, 0}; // Route 1
 const int16_t R1_SIGN_2[] = {3, 5, 9, PO_SIGN, 1};
@@ -38,23 +48,26 @@ const int16_t R1_DOOR_5[] = {3, 54, 13, PO_WARP, 1, 6*16, 47*16};
 const int16_t R2_DOOR_1[] = {4, 10, 60, PO_WARP, 3, 4*16, 10*16}; // Route 2
 const int16_t R2_DOOR_2[] = {4, 10, 61, PO_WARP, 3, 4*16, 11*16};
 const int16_t R2_DOOR_3[] = {4, 6, 5, PO_WARP, 0, 19*16, 33*16};
-
-// TODO: Add in dialogue for the national park trash cans, signs
+// Route 2 Sign 1
+// Route 2 Sign 2
 
 // I'm doing it like this so that I can create a jagged array
 // This way, a dialogue object doesn't need to store 4 extra bytes of data
 const int16_t *objects[] = {
     CA_DOOR_1,
     CA_DOOR_2,
+
     FO_DOOR_1,
     FO_DOOR_2,
     FO_DOOR_3,
     FO_DOOR_4,
+
     NP_DOOR_1,
     NP_DOOR_2,
     NP_DOOR_3,
     NP_DOOR_4,
     NP_DOOR_5,
+    
     R1_SIGN_1,
     R1_SIGN_2,
     R1_TREE_1,
@@ -64,6 +77,7 @@ const int16_t *objects[] = {
     R1_DOOR_3,
     R1_DOOR_4,
     R1_DOOR_5,
+
     R2_DOOR_1,
     R2_DOOR_2,
     R2_DOOR_3,

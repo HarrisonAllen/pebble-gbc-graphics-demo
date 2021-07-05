@@ -1,3 +1,11 @@
+Found RUNNING SHOES! \n Movement speed increased.
+Found HM01 CUT! \n \n Small trees can now be cut.
+Found LUCKY EGG! \n Double EXP from battles.
+Found BERRY! \n \n Recover HP when low.
+Found LEFTOVERS! \n Recover HP every turn.
+Found FOCUS BAND! \n Chance to hang on before fainting.
+Found PROTEIN! \n \n Attack increased.
+Found IRON! \n \n Defense increased.
 There are 8 items scattered throughout the world. Have you found them all yet?
 This shrine is dedicated to the forest's protector.
 The trash can is empty.

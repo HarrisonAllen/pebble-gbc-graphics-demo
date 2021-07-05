@@ -491,13 +491,14 @@ def convert_dialogue_to_bin(text_file, output_file, data_file):
             temp = ''
             d_size = 0
             for w in words:
-                if len(temp + w) >= MAX_LEN:
+                if len(temp + w) >= MAX_LEN or w == '\n':
                     temp = temp.strip() + '\n'
                     output = bytes([ord(i) for i in temp])
                     with open(output_file, 'ab') as of:
                         d_size += of.write(output)
                     temp = ''
-                temp += w + ' '
+                if w != '\n':
+                    temp += w + ' '
                     
             temp = temp.strip() + '\0'
             output = bytes([ord(i) for i in temp])
@@ -548,4 +549,4 @@ if __name__ == "__main__":
     # convert_tilesheet_to_2bpp("resources/SourceImages/Pokemon/UI/MenuTilesheet.png", "resources/SourceImages/Pokemon/UI/Output/PokemonMenuTilesheet~color.bin")
     # convert_tilesheet_to_2bpp("resources/SourceImages/Pokemon/UI/MenuTilesheet~bw.png", "resources/SourceImages/Pokemon/UI/Output/PokemonMenuTilesheet~bw.bin")
     
-    convert_dialogue_to_bin("resources/MenuMockups/Dialogue/PokemonDialogue.txt", "resources/MenuMockups/Dialogue/PokemonDialogue_text.bin",  "resources/MenuMockups/Dialogue/PokemonDialogue_data.bin")
+    convert_dialogue_to_bin("resources/MenuMockups/Dialogue/PokemonDialogue.txt", "resources/MenuMockups/Dialogue/Dialogue_text.bin",  "resources/MenuMockups/Dialogue/Dialogue_data.bin")

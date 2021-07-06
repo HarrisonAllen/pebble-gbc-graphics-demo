@@ -31,6 +31,7 @@
 #define PLAYER_LOCATION GPoint(0, 5)
 
 #define SAVE_MENU_BOUNDS GRect(0, 7, 6, 5)
+#define CONFIRM_BOUNDS GRect(12, 7, 6, 5)
 
 #if defined(PBL_PLATFORM_DIORITE)
     #define FRAME_SKIP 8

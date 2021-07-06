@@ -50,7 +50,7 @@ static int s_to_next_level, s_to_cur_level;
 static int s_exp_gained;
 static bool s_up_press_queued, s_down_press_queued;
 static uint8_t s_escape_odds;
-static uint8_t s_player_items = SET_ITEM(SET_ITEM(0, ITEM_ID_RUNNING_SHOES), ITEM_ID_LUCKY_EGG);
+static uint8_t s_player_items; // = SET_ITEM(SET_ITEM(0, ITEM_ID_RUNNING_SHOES), ITEM_ID_LUCKY_EGG);
 static bool s_player_goes_first;
 
 
@@ -62,12 +62,11 @@ static bool s_player_goes_first;
 // -- Move halves of tree in opposite direction, blinking
 // - Incorporate:
 // -- All the other data
-// -- All of the objects
 // - (Optional) add in a check for if a tile is out of bounds, then clamp it to bounds instead of error->crash
 // - Collectible items:
 // -- Running Shoes (double move speed) - Forest, top half ***IMPLEMENTED***
 // -- Cut (enables cutting of trees) - Forest, bottom half
-// -- Lucky Egg (double exp) - National Park, top right ***IMPLEMENTED***s
+// -- Lucky Egg (double exp) - National Park, top right ***IMPLEMENTED***
 // -- Berry (heals 10HP when below half, one time use) - Berry tree route 1, can come back for more
 // -- Leftovers (restore a 1/16 HP each turn) - Far right trash can National Park
 // -- Focus Band (12% chance to prevent fainting) - Cave, in path 
@@ -283,6 +282,13 @@ static void load_overworld(GBC_Graphics *graphics) {
     GBC_Graphics_set_sprite_palette(graphics, 6, 0b11101101, 0b11011000, 0b11000100, 0b11000000);
   #else
     GBC_Graphics_set_sprite_palette(graphics, 6, 1, 1, 0, 0);
+  #endif
+
+  // Set item palette
+  #if defined(PBL_COLOR)
+    GBC_Graphics_set_sprite_palette(graphics, 5, 0b11111111, 0b11111001, 0b11110000, 0b11000000);
+  #else
+    GBC_Graphics_set_sprite_palette(graphics, 5, 1, 1, 0, 0);
   #endif
 
   // Create player sprites
@@ -504,6 +510,17 @@ static void load_blocks_in_direction(GBC_Graphics *graphics, PlayerDirection dir
   load_tiles(graphics, bg_root_x & 31, bg_root_y & 31, tile_root_x, tile_root_y, num_x_tiles, num_y_tiles);
 }
 
+static int check_for_item(uint16_t target_x, uint16_t target_y) {
+  uint16_t block_x = target_x >> 4;
+  uint16_t block_y = target_y >> 4;
+  for (uint16_t i = 0; i < sizeof(items) >> 2; i++) {
+    if (s_route_num == items[i][0] && block_x == items[i][1] && block_y == items[i][2]) {
+      return i;
+    }
+  }
+  return -1;
+}
+
 static int check_for_object(uint16_t target_x, uint16_t target_y) {
   uint16_t block_x = target_x >> 4;
   uint16_t block_y = target_y >> 4;
@@ -592,80 +609,94 @@ static void play(GBC_Graphics *graphics) {
       }
       GBC_Graphics_oam_set_sprite_priority(graphics, 4, false);
       GBC_Graphics_oam_set_sprite_priority(graphics, 5, false);
-      
-      // TODO: Check if current block is CLIFF_N, then check if direction != north for can walk
-      PokemonSquareInfo current_block_type = get_block_type(s_world_map, s_player_x, s_player_y);
-      PokemonSquareInfo target_block_type = get_block_type(s_world_map, s_target_x+8, s_target_y);
-      // APP_LOG(APP_LOG_LEVEL_DEBUG, "Block at %d, %d yielded type %d", s_target_x+8, s_target_y, target_block_type);
-      if (target_block_type == OBJECT) {
-        int object_num = check_for_object(s_target_x+8, s_target_y);
-        // APP_LOG(APP_LOG_LEVEL_DEBUG, "Check at %d, %d yielded object %d", s_target_x+8, s_target_y, object_num);
-        if (object_num != -1) {
-          if (s_move_mode_toggle) {
-            s_move_toggle = false;
-          }
-          PokemonObjectTypes object_type = objects[object_num][3];
-          const int16_t *data = &objects[object_num][4];
-          switch (object_type) {
-            case PO_NONE:
-              break;
-            case PO_TREE:
-              load_screen(graphics);
-              begin_dialogue_from_string(graphics, DIALOGUE_BOUNDS, DIALOGUE_ROOT, "This tree can be\nCUT!", true);
-              s_prev_game_state = s_game_state;
-              s_game_state = PG_DIALOGUE;
-              s_player_mode = P_STAND;
-              s_can_move = false;
-              break;
-            case PO_TEXT:
-              load_screen(graphics);
-              begin_dialogue(graphics, DIALOGUE_BOUNDS, DIALOGUE_ROOT, data[0], true);
-              s_prev_game_state = s_game_state;
-              s_game_state = PG_DIALOGUE;
-              s_player_mode = P_STAND;
-              s_can_move = false;
-              break;
-            case PO_WARP:{
-              s_warp_route = data[0];
-              s_warp_x = data[1];
-              s_warp_y = data[2];
-              if (s_player_direction == D_UP) {
-                s_player_mode = P_WARP_WALK;
-                load_blocks_in_direction(graphics, s_player_direction);
-              } else {
-                s_player_mode = P_WARP;
-              }
-              s_can_move = true;
-            } break;
-            default:
-              s_can_move = false;
-              break;
-          }
-        } else {
-          s_can_move = false;
+
+      int item_num = check_for_item(s_target_x+8, s_target_y);
+      if ((item_num != -1) && !HAS_ITEM(s_player_items, item_num)) {
+        // s_player_items = SET_ITEM(s_player_items, item_num);
+        if (s_move_mode_toggle) {
+          s_move_toggle = false;
         }
+        load_screen(graphics);
+        begin_dialogue(graphics, DIALOGUE_BOUNDS, DIALOGUE_ROOT, rand()%8, true);
+        // begin_dialogue_from_string(graphics, DIALOGUE_BOUNDS, DIALOGUE_ROOT, item_dialogue, true);
+        s_prev_game_state = s_game_state;
+        s_game_state = PG_DIALOGUE;
+        s_player_mode = P_STAND;
+        s_can_move = false;
       } else {
-        if ((target_block_type == CLIFF_S && s_player_direction == D_DOWN)
-            || (target_block_type == CLIFF_W && s_player_direction == D_LEFT)
-            || (target_block_type == CLIFF_E && s_player_direction == D_RIGHT)) {
-          s_target_x += direction_to_point(s_player_direction).x * (TILE_WIDTH * 2);
-          s_target_y += direction_to_point(s_player_direction).y * (TILE_HEIGHT * 2);
-          s_player_mode = P_JUMP;
-          s_can_move = true;
+        PokemonSquareInfo current_block_type = get_block_type(s_world_map, s_player_x, s_player_y);
+        PokemonSquareInfo target_block_type = get_block_type(s_world_map, s_target_x+8, s_target_y);
+        // APP_LOG(APP_LOG_LEVEL_DEBUG, "Block at %d, %d yielded type %d", s_target_x+8, s_target_y, target_block_type);
+        if (target_block_type == OBJECT) {
+          int object_num = check_for_object(s_target_x+8, s_target_y);
+          // APP_LOG(APP_LOG_LEVEL_DEBUG, "Check at %d, %d yielded object %d", s_target_x+8, s_target_y, object_num);
+          if (object_num != -1) {
+            if (s_move_mode_toggle) {
+              s_move_toggle = false;
+            }
+            PokemonObjectTypes object_type = objects[object_num][3];
+            const int16_t *data = &objects[object_num][4];
+            switch (object_type) {
+              case PO_NONE:
+                break;
+              case PO_TREE:
+                load_screen(graphics);
+                begin_dialogue_from_string(graphics, DIALOGUE_BOUNDS, DIALOGUE_ROOT, "This tree can be\nCUT!", true);
+                s_prev_game_state = s_game_state;
+                s_game_state = PG_DIALOGUE;
+                s_player_mode = P_STAND;
+                s_can_move = false;
+                break;
+              case PO_TEXT:
+                load_screen(graphics);
+                begin_dialogue(graphics, DIALOGUE_BOUNDS, DIALOGUE_ROOT, data[0], true);
+                s_prev_game_state = s_game_state;
+                s_game_state = PG_DIALOGUE;
+                s_player_mode = P_STAND;
+                s_can_move = false;
+                break;
+              case PO_WARP:{
+                s_warp_route = data[0];
+                s_warp_x = data[1];
+                s_warp_y = data[2];
+                if (s_player_direction == D_UP) {
+                  s_player_mode = P_WARP_WALK;
+                  load_blocks_in_direction(graphics, s_player_direction);
+                } else {
+                  s_player_mode = P_WARP;
+                }
+                s_can_move = true;
+              } break;
+              default:
+                s_can_move = false;
+                break;
+            }
+          } else {
+            s_can_move = false;
+          }
         } else {
-          s_can_move = (target_block_type == WALK || target_block_type == GRASS
-                        || (target_block_type == CLIFF_N && s_player_direction != D_DOWN));
-          s_can_move &= !(current_block_type == CLIFF_N && s_player_direction == D_UP);
-        }
-        if (!s_can_move) {
-          s_target_x = s_player_x;
-          s_target_y = s_player_y;
-        } else {
-          load_blocks_in_direction(graphics, s_player_direction);
-        #if defined(PBL_BW)
-          GBC_Graphics_oam_hide_sprite(graphics, 0);
-          GBC_Graphics_oam_hide_sprite(graphics, 1);
-        #endif
+          if ((target_block_type == CLIFF_S && s_player_direction == D_DOWN)
+              || (target_block_type == CLIFF_W && s_player_direction == D_LEFT)
+              || (target_block_type == CLIFF_E && s_player_direction == D_RIGHT)) {
+            s_target_x += direction_to_point(s_player_direction).x * (TILE_WIDTH * 2);
+            s_target_y += direction_to_point(s_player_direction).y * (TILE_HEIGHT * 2);
+            s_player_mode = P_JUMP;
+            s_can_move = true;
+          } else {
+            s_can_move = (target_block_type == WALK || target_block_type == GRASS
+                          || (target_block_type == CLIFF_N && s_player_direction != D_DOWN));
+            s_can_move &= !(current_block_type == CLIFF_N && s_player_direction == D_UP);
+          }
+          if (!s_can_move) {
+            s_target_x = s_player_x;
+            s_target_y = s_player_y;
+          } else {
+            load_blocks_in_direction(graphics, s_player_direction);
+          #if defined(PBL_BW)
+            GBC_Graphics_oam_hide_sprite(graphics, 0);
+            GBC_Graphics_oam_hide_sprite(graphics, 1);
+          #endif
+          }
         }
       }
     }

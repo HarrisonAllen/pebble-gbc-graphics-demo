@@ -195,7 +195,7 @@ static void load_player_sprites(GBC_Graphics *graphics) {
 
   uint16_t spritesheet_offset = pokemon_trainer_sprites[s_player_sprite] * POKEMON_TILES_PER_SPRITE;
   GBC_Graphics_load_from_tilesheet_into_vram(graphics, RESOURCE_ID_DATA_SPRITESHEET,
-    spritesheet_offset, POKEMON_TILES_PER_SPRITE * POKEMON_SPRITES_PER_TRAINER, 2, TILE_BANK_SPRITES); // offset 2 for effects
+    spritesheet_offset, POKEMON_TILES_PER_SPRITE * POKEMON_SPRITES_PER_TRAINER, 10, TILE_BANK_SPRITES); // offset 10 for effects and items
 }
 
 static void new_player_sprites(GBC_Graphics *graphics) {
@@ -213,7 +213,7 @@ static void move_player_sprites(GBC_Graphics *graphics, short delta_x, short del
 static void set_player_sprites(GBC_Graphics *graphics, bool walk_sprite, bool x_flip) {
   uint8_t new_tile = pokemon_trainer_sprite_offsets[s_player_direction + walk_sprite * 4];
   for (uint8_t i = 0; i < 4; i++) {
-    GBC_Graphics_oam_set_sprite_tile(graphics, 2 + i, (new_tile * POKEMON_TILES_PER_SPRITE) + i + 2);
+    GBC_Graphics_oam_set_sprite_tile(graphics, 2 + i, (new_tile * POKEMON_TILES_PER_SPRITE) + i + 10);
     GBC_Graphics_oam_set_sprite_x_flip(graphics, 2 + i, x_flip);
   }
 
@@ -232,7 +232,7 @@ static void hide_preview_sprites(GBC_Graphics *graphics, uint8_t oam_offset) {
 static void set_preview_sprites(GBC_Graphics *graphics, GPoint pos, PlayerDirection dir, bool walk_sprite, bool x_flip, uint8_t oam_offset) {
   uint8_t new_tile = pokemon_trainer_sprite_offsets[dir + walk_sprite * 4];
   for (uint8_t i = 0; i < 4; i++) {
-    GBC_Graphics_oam_set_sprite_tile(graphics, oam_offset + i, (new_tile * POKEMON_TILES_PER_SPRITE) + i + 2);
+    GBC_Graphics_oam_set_sprite_tile(graphics, oam_offset + i, (new_tile * POKEMON_TILES_PER_SPRITE) + i + 10);
     GBC_Graphics_oam_set_sprite_x_flip(graphics, oam_offset + i, x_flip);
   }
 
@@ -246,6 +246,32 @@ static void set_preview_sprites(GBC_Graphics *graphics, GPoint pos, PlayerDirect
       GBC_Graphics_oam_set_sprite_pos(graphics, oam_offset + x + 2 * y, (pos.x + x) * 8 + 8, (pos.y + y) * 8 + 16);
       GBC_Graphics_oam_set_sprite_attrs(graphics, oam_offset + x + 2 * y, GBC_Graphics_attr_make(0, 3, false, false, false));
       GBC_Graphics_bg_set_tile_priority(graphics, pos.x + x, pos.y + y, false);
+    }
+  }
+}
+
+static void hide_item(GBC_Graphics *graphics) {
+  for (uint8_t i = 0; i < 4; i++) {
+    GBC_Graphics_oam_hide_sprite(graphics, 20+i);
+  }
+}
+
+static void render_items(GBC_Graphics *graphics) {
+  for (uint8_t i = 0; i < 8; i++) {
+    const int16_t *item = items[i];
+    int item_x = item[1] << 4;
+    int item_y = item[2] << 4;
+    if (s_route_num == item[0] && !HAS_ITEM(s_player_items, item[3])) {
+      if (!item[4]) {
+        int x_diff = item_x - s_player_x;
+        int y_diff = item_y - s_player_y;
+        if (abs(x_diff) <= 80 && abs(y_diff) <= 80) {
+          GBC_Graphics_oam_set_sprite_pos(graphics, 20 + 0, x_diff + 72, y_diff + 76);
+          GBC_Graphics_oam_set_sprite_pos(graphics, 20 + 1, x_diff + 72 + 8, y_diff + 76);
+          GBC_Graphics_oam_set_sprite_pos(graphics, 20 + 2, x_diff + 72, y_diff + 76 + 8);
+          GBC_Graphics_oam_set_sprite_pos(graphics, 20 + 3, x_diff + 72 + 8, y_diff + 76 + 8);
+        }
+      }
     }
   }
 }
@@ -273,7 +299,8 @@ static void load_overworld(GBC_Graphics *graphics) {
 
   // Create grass and shadow effect sprites
   uint16_t spritesheet_offset = POKEMON_SPRITELET_GRASS * POKEMON_TILES_PER_SPRITE;
-  GBC_Graphics_load_from_tilesheet_into_vram(graphics, RESOURCE_ID_DATA_SPRITESHEET, spritesheet_offset, 2, 0, TILE_BANK_SPRITES);
+  GBC_Graphics_load_from_tilesheet_into_vram(graphics, RESOURCE_ID_DATA_SPRITESHEET, spritesheet_offset, 1, 0, TILE_BANK_SPRITES);
+  GBC_Graphics_load_from_tilesheet_into_vram(graphics, RESOURCE_ID_DATA_SPRITESHEET, spritesheet_offset+2, 1, 1, TILE_BANK_SPRITES);
   GBC_Graphics_oam_set_sprite(graphics, 0, 0, 0, 0, GBC_Graphics_attr_make(6, 3, false, false, false));
   GBC_Graphics_oam_set_sprite(graphics, 1, 0, 0, 0, GBC_Graphics_attr_make(6, 3, true, false, false));
   GBC_Graphics_oam_set_sprite(graphics, 6, 0, 0, 1, GBC_Graphics_attr_make(0, 3, false, false, false));
@@ -284,12 +311,18 @@ static void load_overworld(GBC_Graphics *graphics) {
     GBC_Graphics_set_sprite_palette(graphics, 6, 1, 1, 0, 0);
   #endif
 
-  // Set item palette
+  // Create item sprites
+  spritesheet_offset = ITEM_SPRITE_POKEBALL * POKEMON_TILES_PER_SPRITE;
+  GBC_Graphics_load_from_tilesheet_into_vram(graphics, RESOURCE_ID_DATA_SPRITESHEET, spritesheet_offset, 4, 2, TILE_BANK_SPRITES);
+  for (uint8_t i = 0; i < 4; i++) {
+    GBC_Graphics_oam_set_sprite(graphics, 20+i, 0, 0, 2+i, GBC_Graphics_attr_make(5, 3, false, false, false));
+  }
   #if defined(PBL_COLOR)
     GBC_Graphics_set_sprite_palette(graphics, 5, 0b11111111, 0b11111001, 0b11110000, 0b11000000);
   #else
     GBC_Graphics_set_sprite_palette(graphics, 5, 1, 1, 0, 0);
   #endif
+  render_items(graphics);
 
   // Create player sprites
   for (uint8_t y = 0; y < 2; y++) {
@@ -612,13 +645,13 @@ static void play(GBC_Graphics *graphics) {
 
       int item_num = check_for_item(s_target_x+8, s_target_y);
       if ((item_num != -1) && !HAS_ITEM(s_player_items, item_num)) {
-        // s_player_items = SET_ITEM(s_player_items, item_num);
+        s_player_items = SET_ITEM(s_player_items, item_num);
+        hide_item(graphics);
         if (s_move_mode_toggle) {
           s_move_toggle = false;
         }
         load_screen(graphics);
-        begin_dialogue(graphics, DIALOGUE_BOUNDS, DIALOGUE_ROOT, rand()%8, true);
-        // begin_dialogue_from_string(graphics, DIALOGUE_BOUNDS, DIALOGUE_ROOT, item_dialogue, true);
+        begin_dialogue(graphics, DIALOGUE_BOUNDS, DIALOGUE_ROOT, item_num, true);
         s_prev_game_state = s_game_state;
         s_game_state = PG_DIALOGUE;
         s_player_mode = P_STAND;
@@ -733,6 +766,7 @@ static void play(GBC_Graphics *graphics) {
         s_player_x += direction_to_point(s_player_direction).x * 2;
         s_player_y += direction_to_point(s_player_direction).y * 2;
         GBC_Graphics_bg_move(graphics, direction_to_point(s_player_direction).x * 2, direction_to_point(s_player_direction).y * 2);
+        render_items(graphics);
       }
       if (get_block_type(s_world_map, s_target_x+8, s_target_y) == GRASS) { // grass
         switch(s_walk_frame) {
@@ -758,7 +792,7 @@ static void play(GBC_Graphics *graphics) {
         }
       }
       if (s_walk_frame == 7 && s_can_move && (s_route_num == 0 || s_route_num == 1 || get_block_type(s_world_map, s_target_x+8, s_target_y) == GRASS)) {
-        if (rand() % WILD_ODDS == 0) {
+        if (ENCOUNTERS_ENABLED && rand() % WILD_ODDS == 0) {
           load_screen(graphics);
           s_game_state = PG_BATTLE;
           s_battle_state = PB_FLASH;
@@ -796,6 +830,7 @@ static void play(GBC_Graphics *graphics) {
         s_player_x += direction_to_point(s_player_direction).x * 4;
         s_player_y += direction_to_point(s_player_direction).y * 4;
         GBC_Graphics_bg_move(graphics, direction_to_point(s_player_direction).x * 4, direction_to_point(s_player_direction).y * 4);
+        render_items(graphics);
       }
       if (get_block_type(s_world_map, s_target_x+8, s_target_y) == GRASS) { // grass
         switch(s_walk_frame) {
@@ -821,7 +856,7 @@ static void play(GBC_Graphics *graphics) {
         }
       }
       if (s_walk_frame == 3 && s_can_move && (s_route_num == 0 || s_route_num == 1 || get_block_type(s_world_map, s_target_x+8, s_target_y) == GRASS)) {
-        if (rand() % WILD_ODDS == 0) {
+        if (ENCOUNTERS_ENABLED && rand() % WILD_ODDS == 0) {
           load_screen(graphics);
           s_game_state = PG_BATTLE;
           s_battle_state = PB_FLASH;
@@ -857,9 +892,10 @@ static void play(GBC_Graphics *graphics) {
         s_player_x += direction_to_point(s_player_direction).x * 2;
         s_player_y += direction_to_point(s_player_direction).y * 2;
         GBC_Graphics_bg_move(graphics, direction_to_point(s_player_direction).x * 2, direction_to_point(s_player_direction).y * 2);
+        render_items(graphics);
       }
       if (get_block_type(s_world_map, s_target_x+8, s_target_y) == GRASS && s_walk_frame == 15) { // grass
-        if (s_can_move && (rand() % WILD_ODDS == 0)) {
+        if (s_can_move && ENCOUNTERS_ENABLED && (rand() % WILD_ODDS == 0)) {
           load_screen(graphics);
           s_game_state = PG_BATTLE;
           s_battle_state = PB_FLASH;
@@ -943,6 +979,7 @@ static void play(GBC_Graphics *graphics) {
         s_player_x += direction_to_point(s_player_direction).x * 2;
         s_player_y += direction_to_point(s_player_direction).y * 2;
         GBC_Graphics_bg_move(graphics, direction_to_point(s_player_direction).x * 2, direction_to_point(s_player_direction).y * 2);
+        render_items(graphics);
       }
       switch(s_walk_frame) {
         case 7:
@@ -988,7 +1025,7 @@ static void play(GBC_Graphics *graphics) {
         s_player_y = s_warp_y;
         s_target_x = s_warp_x;
         s_target_y = s_warp_y;
-        APP_LOG(APP_LOG_LEVEL_DEBUG, "Warping to Route %d, Pos (%d, %d)", s_route_num, s_player_x, s_player_y);
+        // APP_LOG(APP_LOG_LEVEL_DEBUG, "Warping to Route %d, Pos (%d, %d)", s_route_num, s_player_x, s_player_y);
         load_resources(graphics);
         load_blocks_in_direction(graphics, s_player_direction);
         GBC_Graphics_copy_all_bg_palettes(graphics, s_cur_bg_palettes);
@@ -1559,6 +1596,7 @@ static void save() {
     .wins = s_stats_wins,
     .losses = s_stats_losses,
     .runs = s_stats_runs,
+    .player_items = s_player_items,
   };
   persist_write_data(SAVE_KEY, &data, sizeof(PokemonSaveData));
   s_save_file_exists = true;
@@ -1702,6 +1740,18 @@ static void draw_stats(GBC_Graphics *graphics) {
   draw_text_at_location(graphics, GPoint(STATS_ROOT_X + 2, STATS_ROOT_Y + 15), text_buffer);
 }
 
+static void draw_items(GBC_Graphics *graphics) {
+  draw_menu_rectangle(graphics, GRect(STATS_ROOT_X, STATS_ROOT_Y, 18, 18));
+  for (uint8_t i = 0; i < 8; i++) {
+    if (HAS_ITEM(s_player_items, i)) {
+      draw_text_at_location(graphics, GPoint(STATS_ROOT_X + 2, STATS_ROOT_Y + 1 + i*2), item_names[i]);
+      draw_text_at_location(graphics, GPoint(STATS_ROOT_X + 2, STATS_ROOT_Y + 1 + i*2 + 1), item_infos[i]);
+    } else {
+      draw_text_at_location(graphics, GPoint(STATS_ROOT_X + 2, STATS_ROOT_Y + 1 + i*2), "______________");
+    }
+  }
+}
+
 void Pokemon_handle_select_click(GBC_Graphics *graphics) {
   switch(s_game_state) {
     case PG_PAUSE:
@@ -1722,13 +1772,8 @@ void Pokemon_handle_select_click(GBC_Graphics *graphics) {
               s_menu_state = PM_OPTION;
               break;
             case 3: // Pack
-              // TODO: put in the pack display with items and stuff
-              // begin_dialogue_from_string(graphics, DIALOGUE_BOUNDS, DIALOGUE_ROOT, "SAVING, DO NOT\nCLOSE THE APP...", false);
-              // s_menu_state = PM_SAVING;
-              // begin_dialogue_from_string(graphics, DIALOGUE_BOUNDS, DIALOGUE_ROOT, "Do you want to\nsave the game?", false);
-              // s_menu_state = PM_SAVE_CONFIRM;
-              // s_prev_game_state = s_game_state;
-              // s_game_state = PG_DIALOGUE;
+              draw_items(graphics);
+              s_menu_state = PM_PACK;
               break;
             case 4: // Quit
               window_stack_pop(true);
@@ -1772,6 +1817,10 @@ void Pokemon_handle_select_click(GBC_Graphics *graphics) {
           draw_pause_menu(graphics);
           break;
         case PM_STATS:
+          s_menu_state = PM_BASE;
+          draw_pause_menu(graphics);
+          break;
+        case PM_PACK:
           s_menu_state = PM_BASE;
           draw_pause_menu(graphics);
           break;
@@ -1846,6 +1895,7 @@ void Pokemon_handle_select_click(GBC_Graphics *graphics) {
             s_stats_wins = data.wins;
             s_stats_losses = data.losses;
             s_stats_runs = data.runs;
+            s_player_items = data.player_items;
             load_game(graphics);
             s_game_state = PG_PLAY;
             s_select_pressed = false;
@@ -2026,6 +2076,10 @@ void Pokemon_handle_back(GBC_Graphics *graphics) {
           s_menu_state = PM_BASE;
           set_cursor_pos(2);
           hide_preview_sprites(graphics, 8);
+          draw_pause_menu(graphics);
+          break;
+        case PM_PACK:
+          s_menu_state = PM_BASE;
           draw_pause_menu(graphics);
           break;
         default:

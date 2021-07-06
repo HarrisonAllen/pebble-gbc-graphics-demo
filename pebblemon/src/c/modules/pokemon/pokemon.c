@@ -52,6 +52,7 @@ static bool s_up_press_queued, s_down_press_queued;
 static uint8_t s_escape_odds;
 static uint8_t s_player_items; // = SET_ITEM(SET_ITEM(0, ITEM_ID_RUNNING_SHOES), ITEM_ID_LUCKY_EGG);
 static bool s_player_goes_first;
+int s_accel_x_cal, s_accel_y_cal;
 
 
 // TODO: 
@@ -615,16 +616,18 @@ static void play(GBC_Graphics *graphics) {
         AccelData accel = (AccelData) { .x = 0, .y = 0, .z = 0 };
         PlayerDirection old_direction = s_player_direction;
         accel_service_peek(&accel);
-        if (abs(accel.x) > abs(accel.y)) {
-          if (accel.x < -150) {
+        int cal_accel_x = accel.x - s_accel_x_cal;
+        int cal_accel_y = accel.y - s_accel_y_cal;
+        if (abs(cal_accel_x) > abs(cal_accel_y)) {
+          if (cal_accel_x < -150) {
             s_player_direction = D_LEFT;
-          } else if (accel.x > 150) {
+          } else if (cal_accel_x > 150) {
             s_player_direction = D_RIGHT;
           }
         } else {
-          if (accel.y < -150) {
+          if (cal_accel_y < -150) {
             s_player_direction = D_DOWN;
-          } else if (accel.y > 150) {
+          } else if (cal_accel_y > 150) {
             s_player_direction = D_UP;
           }
         }
@@ -1788,6 +1791,10 @@ void Pokemon_handle_select_click(GBC_Graphics *graphics) {
               break;
             case 1: // Turn Mode
               s_turn_mode_tilt = !s_turn_mode_tilt;
+              AccelData accel = (AccelData) { .x = 0, .y = 0, .z = 0 };
+              accel_service_peek(&accel);
+              s_accel_x_cal = accel.x;
+              s_accel_y_cal = accel.y;
               draw_option_menu(graphics);
               break;
             case 2: // Text Speed

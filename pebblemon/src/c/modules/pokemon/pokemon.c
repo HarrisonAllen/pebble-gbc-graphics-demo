@@ -22,6 +22,7 @@ static uint8_t *s_player_palette;
 static PokemonGameState s_game_state, s_prev_game_state;
 static PokemonMenuState s_menu_state;
 static PokemonBattleState s_battle_state;
+static PokemonTreeState s_tree_state;
 static bool s_save_file_exists;
 static uint16_t s_player_pokemon, s_enemy_pokemon;
 static uint8_t s_player_pokemon_name[11], s_enemy_pokemon_name[11];
@@ -53,6 +54,7 @@ static uint8_t s_escape_odds;
 static uint8_t s_player_items; // = SET_ITEM(SET_ITEM(0, ITEM_ID_RUNNING_SHOES), ITEM_ID_LUCKY_EGG);
 static bool s_player_goes_first;
 int s_accel_x_cal, s_accel_y_cal;
+static uint8_t s_tree_anim_frame;
 
 
 // TODO: 
@@ -124,6 +126,7 @@ static void load_screen(GBC_Graphics *graphics) {
   for (uint8_t i = 0; i < 8; i++) {
     GBC_Graphics_set_bg_palette_array(graphics, i, &palettes[s_route_num][i*PALETTE_SIZE]);
   }
+  GBC_Graphics_set_sprite_palette_array(graphics, 4, &palettes[s_route_num][2*PALETTE_SIZE]);
   GBC_Graphics_copy_all_bg_palettes(graphics, s_cur_bg_palettes);
   GBC_Graphics_bg_set_scroll_pos(graphics, 0, 0);
   uint8_t bg_root_x = GBC_Graphics_bg_get_scroll_x(graphics) >> 3;
@@ -289,6 +292,14 @@ static uint8_t get_block_type(uint8_t *map, uint16_t x, uint16_t y) {
   return block_types[s_route_num][block];
 }
 
+static void set_block(uint8_t *map, uint16_t x, uint16_t y, uint8_t replacement) {
+  uint16_t tile_x = (x >> 3);
+  uint16_t tile_y = (y >> 3);
+  uint8_t chunk = map[(tile_x >> 2) + (tile_y >> 2) * route_dims[s_route_num << 1]];
+  APP_LOG(APP_LOG_LEVEL_DEBUG, "Chunk %d and block %d", chunk, chunk * 4 + ((tile_x >> 1) & 1) + ((tile_y >> 1) & 1) * 2);
+  chunks[s_route_num][chunk * 4 + ((tile_x >> 1) & 1) + ((tile_y >> 1) & 1) * 2] = replacement;
+}
+
 static void load_overworld(GBC_Graphics *graphics) {
   load_screen(graphics);
   
@@ -314,14 +325,18 @@ static void load_overworld(GBC_Graphics *graphics) {
 
   // Create item sprites
   spritesheet_offset = ITEM_SPRITE_POKEBALL * POKEMON_TILES_PER_SPRITE;
-  GBC_Graphics_load_from_tilesheet_into_vram(graphics, RESOURCE_ID_DATA_SPRITESHEET, spritesheet_offset, 4, 2, TILE_BANK_SPRITES);
+  GBC_Graphics_load_from_tilesheet_into_vram(graphics, RESOURCE_ID_DATA_SPRITESHEET, spritesheet_offset, 8, 2, TILE_BANK_SPRITES);
   for (uint8_t i = 0; i < 4; i++) {
     GBC_Graphics_oam_set_sprite(graphics, 20+i, 0, 0, 2+i, GBC_Graphics_attr_make(5, 3, false, false, false));
+  }
+  for (uint8_t i = 0; i < 4; i++) {
+    GBC_Graphics_oam_set_sprite(graphics, 24+i, 0, 0, 6+i, GBC_Graphics_attr_make(4, 3, false, false, false));
   }
   #if defined(PBL_COLOR)
     GBC_Graphics_set_sprite_palette(graphics, 5, 0b11111111, 0b11111001, 0b11110000, 0b11000000);
   #else
     GBC_Graphics_set_sprite_palette(graphics, 5, 1, 1, 0, 0);
+    GBC_Graphics_set_sprite_palette(graphics, 4, 1, 1, 0, 0);
   #endif
   render_items(graphics);
 
@@ -345,6 +360,17 @@ static void load_overworld(GBC_Graphics *graphics) {
   }
 }
 
+static int check_for_object(uint16_t target_x, uint16_t target_y) {
+  uint16_t block_x = target_x >> 4;
+  uint16_t block_y = target_y >> 4;
+  for (uint16_t i = 0; i < sizeof(objects) >> 2; i++) {
+    if (s_route_num == objects[i][0] && block_x == objects[i][1] && block_y == objects[i][2]) {
+      return i;
+    }
+  }
+  return -1;
+}
+
 static void load_resources(GBC_Graphics *graphics) {
   ResHandle handle = resource_get_handle(map_files[s_route_num]);
   size_t res_size = resource_size(handle);
@@ -354,6 +380,12 @@ static void load_resources(GBC_Graphics *graphics) {
   }
   s_world_map = (uint8_t*)malloc(res_size);
   resource_load(handle, s_world_map, res_size);
+    
+  int object_num = check_for_object(s_player_x, s_player_y);
+  APP_LOG(APP_LOG_LEVEL_DEBUG, "Found object %d at (%d, %d) and is %d", object_num, object_num != -1 ? objects[object_num][3] : -1);
+  if (object_num != -1 && objects[object_num][3] == PO_TREE) { // Make sure player doesn't spawn in tree
+    set_block(s_world_map, s_player_x, s_player_y, replacement_blocks[s_route_num]);
+  }
 
   load_overworld(graphics);
 }
@@ -555,17 +587,6 @@ static int check_for_item(uint16_t target_x, uint16_t target_y) {
   return -1;
 }
 
-static int check_for_object(uint16_t target_x, uint16_t target_y) {
-  uint16_t block_x = target_x >> 4;
-  uint16_t block_y = target_y >> 4;
-  for (uint16_t i = 0; i < sizeof(objects) >> 2; i++) {
-    if (s_route_num == objects[i][0] && block_x == objects[i][1] && block_y == objects[i][2]) {
-      return i;
-    }
-  }
-  return -1;
-}
-
 static void lerp_player_palette_to_color(GBC_Graphics *graphics, uint8_t end, uint8_t index) {
   uint8_t palette_holder[4];
   uint8_t end_palette[4] = {end, end, end, end};
@@ -677,11 +698,18 @@ static void play(GBC_Graphics *graphics) {
                 break;
               case PO_TREE:
                 load_screen(graphics);
-                begin_dialogue_from_string(graphics, DIALOGUE_BOUNDS, DIALOGUE_ROOT, "This tree can be\nCUT!", true);
-                s_prev_game_state = s_game_state;
-                s_game_state = PG_DIALOGUE;
                 s_player_mode = P_STAND;
                 s_can_move = false;
+                if (HAS_ITEM(s_player_items, ITEM_ID_CUT)) {
+                  s_prev_game_state = PG_TREE;
+                  s_tree_state = PT_CONFIRM;
+                  s_game_state = PG_DIALOGUE;
+                  begin_dialogue_from_string(graphics, DIALOGUE_BOUNDS, DIALOGUE_ROOT, "This tree can be\nCUT!\nWould you like\nto use CUT?", false);
+                } else {
+                  s_prev_game_state = s_game_state;
+                  s_game_state = PG_DIALOGUE;
+                  begin_dialogue_from_string(graphics, DIALOGUE_BOUNDS, DIALOGUE_ROOT, "This tree can be\nCUT!", true);
+                }
                 break;
               case PO_TEXT:
                 load_screen(graphics);
@@ -1668,11 +1696,53 @@ void Pokemon_step(GBC_Graphics *graphics) {
           s_clear_dialogue = true;
           s_game_state = PG_BATTLE;
           s_select_pressed = false;
+        } else if (s_prev_game_state == PG_TREE) {
+          switch (s_tree_state) {
+            case PT_CONFIRM:
+              set_cursor_pos(0);
+              draw_menu(graphics, CONFIRM_BOUNDS, "YES\n\nNO", false, true);
+              set_num_menu_items(2);
+              s_game_state = PG_TREE;
+              s_select_pressed = false;
+              break;
+            case PT_REPLACE:
+              load_screen(graphics);
+              s_game_state = PG_TREE;
+              s_select_pressed = false;
+              break;
+            default:
+              break;
+          }
         }
       }
       break;
     case PG_BATTLE:
       battle(graphics);
+      break;
+    case PG_TREE:
+      switch (s_tree_state) {
+        case PT_CONFIRM:
+          break;
+        case PT_REPLACE: {
+          // Replace world tile with a grass tile
+          uint16_t target_x = s_player_x + direction_to_point(s_player_direction).x * (TILE_WIDTH * 2);
+          uint16_t target_y = s_player_y + direction_to_point(s_player_direction).y * (TILE_HEIGHT * 2);
+          set_block(s_world_map, target_x, target_y, replacement_blocks[s_route_num]);
+          load_screen(graphics);
+          s_game_state = PG_PLAY;
+          // Draw the tree sprite on top
+        } break;
+        case PT_ANIMATE:
+          // wait
+          // split left/right 2 pixels
+          // wait
+          // hide
+          // move
+          // hide
+          // move
+          // hide
+          break;
+      }
       break;
     default:
       break;
@@ -1963,6 +2033,29 @@ void Pokemon_handle_select_click(GBC_Graphics *graphics) {
         s_move_toggle = !s_move_toggle;
       }
       break;
+    case PG_TREE:
+      switch (s_tree_state) {
+        case PT_CONFIRM:
+          switch (get_cursor_pos()) {
+            case 0: // Yes
+              s_select_pressed = false;
+              s_prev_game_state = PG_TREE;
+              s_tree_state = PT_REPLACE;
+              s_game_state = PG_DIALOGUE;
+              load_screen(graphics);
+              begin_dialogue_from_string(graphics, DIALOGUE_BOUNDS, DIALOGUE_ROOT, "You used CUT!", true);
+              break;
+            case 1: // No
+              s_select_pressed = false;
+              load_screen(graphics);
+              s_game_state = PG_PLAY;
+              break;
+          }
+          break;
+        default:
+          break;
+      }
+      break;
     default:
       break;
   }
@@ -1994,6 +2087,15 @@ void Pokemon_handle_down(GBC_Graphics *graphics) {
     case PG_BATTLE:
       switch (s_battle_state) {
         case PB_PLAYER_TURN:
+          move_cursor_down(graphics);
+          break;
+        default:
+          break;
+      }
+      break;
+    case PG_TREE:
+      switch (s_tree_state) {
+        case PT_CONFIRM:
           move_cursor_down(graphics);
           break;
         default:
@@ -2037,15 +2139,24 @@ void Pokemon_handle_up(GBC_Graphics *graphics) {
           break;
       }
       break;
+    case PG_TREE:
+      switch (s_tree_state) {
+        case PT_CONFIRM:
+          move_cursor_up(graphics);
+          break;
+        default:
+          break;
+      }
+      break;
     default:
       break;
   }
 }
 
 void Pokemon_handle_tap(GBC_Graphics *graphics) {
-  if (s_game_state == PG_PLAY) {
-    new_player_sprites(graphics);
-  }
+  // if (s_game_state == PG_PLAY) {
+  //   new_player_sprites(graphics);
+  // }
 }
 
 void Pokemon_handle_focus_lost(GBC_Graphics *graphics) {

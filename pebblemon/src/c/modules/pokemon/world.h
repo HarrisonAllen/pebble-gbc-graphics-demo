@@ -75,3 +75,11 @@ uint8_t *palettes[] = {
 	route_1_palettes,
 	route_2_palettes,
 };
+
+uint8_t replacement_blocks[] = {
+	0,
+	18,
+	6,
+	16,
+	23,
+};

@@ -47,6 +47,8 @@
 #define TILE_BANK_ANIMS 1
 #define TILE_OFFSET_ANIMS 200
 
+#define ENCOUNTERS_ENABLED false
+
 typedef struct {
     uint8_t route_num;
     uint16_t player_x;
@@ -65,6 +67,7 @@ typedef struct {
     uint16_t wins;
     uint16_t losses;
     uint16_t runs;
+    uint8_t player_items;
 } PokemonSaveData;
 
 void Pokemon_initialize(GBC_Graphics *graphics, Layer *background_layer);

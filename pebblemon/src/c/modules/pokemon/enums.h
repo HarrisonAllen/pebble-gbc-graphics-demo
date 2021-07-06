@@ -24,7 +24,8 @@ typedef enum {
   PG_PAUSE_QUEUED,
   PG_PAUSE,
   PG_DIALOGUE,
-  PG_BATTLE
+  PG_BATTLE,
+  PG_TREE,
 } PokemonGameState;
 
 typedef enum {
@@ -58,3 +59,9 @@ typedef enum {
   PM_SAVING,
   PM_SAVED
 } PokemonMenuState;
+
+typedef enum {
+  PT_CONFIRM,
+  PT_REPLACE,
+  PT_ANIMATE
+} PokemonTreeState;

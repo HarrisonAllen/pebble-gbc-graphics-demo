@@ -54,7 +54,7 @@ static uint8_t s_escape_odds;
 static uint8_t s_player_items; // = SET_ITEM(SET_ITEM(0, ITEM_ID_RUNNING_SHOES), ITEM_ID_LUCKY_EGG);
 static bool s_player_goes_first;
 int s_accel_x_cal, s_accel_y_cal;
-static uint8_t s_tree_anim_frame;
+static uint8_t s_tree_frame;
 
 
 // TODO: 
@@ -126,7 +126,9 @@ static void load_screen(GBC_Graphics *graphics) {
   for (uint8_t i = 0; i < 8; i++) {
     GBC_Graphics_set_bg_palette_array(graphics, i, &palettes[s_route_num][i*PALETTE_SIZE]);
   }
+#if defined(PBL_COLOR)
   GBC_Graphics_set_sprite_palette_array(graphics, 4, &palettes[s_route_num][2*PALETTE_SIZE]);
+#endif
   GBC_Graphics_copy_all_bg_palettes(graphics, s_cur_bg_palettes);
   GBC_Graphics_bg_set_scroll_pos(graphics, 0, 0);
   uint8_t bg_root_x = GBC_Graphics_bg_get_scroll_x(graphics) >> 3;
@@ -334,6 +336,7 @@ static void load_overworld(GBC_Graphics *graphics) {
   }
   #if defined(PBL_COLOR)
     GBC_Graphics_set_sprite_palette(graphics, 5, 0b11111111, 0b11111001, 0b11110000, 0b11000000);
+    // To make sure the palete is correct for forest vs route, so it's set to background palette in load_screen instead
   #else
     GBC_Graphics_set_sprite_palette(graphics, 5, 1, 1, 0, 0);
     GBC_Graphics_set_sprite_palette(graphics, 4, 1, 1, 0, 0);
@@ -455,6 +458,7 @@ static void load_pokemon(GBC_Graphics *graphics, uint16_t pokemon_number, bool f
   render_pokemon(graphics, location, vram_tile_offset, palette);
 }
 
+#if defined(PBL_COLOR)
 static uint8_t lerp_uint8_t(uint8_t start, uint8_t end, float t) {
   return start + (end - start) * t;
 }
@@ -475,6 +479,7 @@ static void lerp_palette(uint8_t *start, uint8_t *end, uint8_t index, uint8_t *o
     output[c] = lerp_color(start[c], end[c], index);
   }
 }
+#endif
 
 void Pokemon_initialize(GBC_Graphics *graphics, Layer *background_layer) {
   // for (uint8_t i = 0; i < 4; i++) {
@@ -587,6 +592,7 @@ static int check_for_item(uint16_t target_x, uint16_t target_y) {
   return -1;
 }
 
+#if defined(PBL_COLOR)
 static void lerp_player_palette_to_color(GBC_Graphics *graphics, uint8_t end, uint8_t index) {
   uint8_t palette_holder[4];
   uint8_t end_palette[4] = {end, end, end, end};
@@ -603,6 +609,8 @@ static void lerp_bg_palettes_to_color(GBC_Graphics *graphics, uint8_t end, uint8
   }
 }
 
+#else
+
 static void set_player_palette_to_color(GBC_Graphics *graphics, uint8_t color) {
   uint8_t palette[4] = {color, color, color, color};
   GBC_Graphics_set_sprite_palette_array(graphics, 0, palette);
@@ -614,6 +622,7 @@ static void set_bg_palettes_to_color(GBC_Graphics *graphics, uint8_t color) {
     GBC_Graphics_set_bg_palette_array(graphics, i, palette);
   }
 }
+#endif
 
 static void play(GBC_Graphics *graphics) {
   s_anim_frame = (s_anim_frame + 1) % 8;
@@ -1130,8 +1139,6 @@ void draw_option_menu(GBC_Graphics *graphics) {
   snprintf(data, 4, ":%d", s_player_sprite);
   draw_text_at_location(graphics, GPoint(OPTION_ROOT_X+9, OPTION_ROOT_Y+11), data);
   set_preview_sprites(graphics, GPoint(OPTION_ROOT_X+13, OPTION_ROOT_Y+10), D_DOWN, false, false, 8);
-  // snprintf(data, 4, ":%d", s_player_color);
-  // draw_text_at_location(graphics, GPoint(OPTION_ROOT_X+9, OPTION_ROOT_Y+11), data);
 }
 
 
@@ -1724,23 +1731,61 @@ void Pokemon_step(GBC_Graphics *graphics) {
         case PT_CONFIRM:
           break;
         case PT_REPLACE: {
-          // Replace world tile with a grass tile
           uint16_t target_x = s_player_x + direction_to_point(s_player_direction).x * (TILE_WIDTH * 2);
           uint16_t target_y = s_player_y + direction_to_point(s_player_direction).y * (TILE_HEIGHT * 2);
           set_block(s_world_map, target_x, target_y, replacement_blocks[s_route_num]);
           load_screen(graphics);
-          s_game_state = PG_PLAY;
-          // Draw the tree sprite on top
+          s_tree_state = PT_ANIMATE;
+          int x_diff = target_x - s_player_x;
+          int y_diff = target_y - s_player_y;
+
+          GBC_Graphics_oam_set_sprite_pos(graphics, 24 + 0, x_diff + 72, y_diff + 72 + 8);
+          GBC_Graphics_oam_set_sprite_pos(graphics, 24 + 1, x_diff + 72 + 8, y_diff + 72 + 8);
+          GBC_Graphics_oam_set_sprite_pos(graphics, 24 + 2, x_diff + 72, y_diff + 72 + 16);
+          GBC_Graphics_oam_set_sprite_pos(graphics, 24 + 3, x_diff + 72 + 8, y_diff + 72 + 16);
+          s_tree_frame = 0;
         } break;
         case PT_ANIMATE:
-          // wait
-          // split left/right 2 pixels
-          // wait
-          // hide
-          // move
-          // hide
-          // move
-          // hide
+          switch (s_tree_frame) {
+            case 0:
+              GBC_Graphics_oam_move_sprite(graphics, 24 + 0, -2, 0);
+              GBC_Graphics_oam_move_sprite(graphics, 24 + 1, 2, 0);
+              GBC_Graphics_oam_move_sprite(graphics, 24 + 2, -2, 0);
+              GBC_Graphics_oam_move_sprite(graphics, 24 + 3, 2, 0);
+              break;
+            case 8:
+              s_game_state = PG_PLAY;
+            case 4:
+            case 6:
+              GBC_Graphics_oam_hide_sprite(graphics, 24 + 0);
+              GBC_Graphics_oam_hide_sprite(graphics, 24 + 1);
+              GBC_Graphics_oam_hide_sprite(graphics, 24 + 2);
+              GBC_Graphics_oam_hide_sprite(graphics, 24 + 3);
+              break;
+            case 5: {
+              uint16_t target_x = s_player_x + direction_to_point(s_player_direction).x * (TILE_WIDTH * 2);
+              uint16_t target_y = s_player_y + direction_to_point(s_player_direction).y * (TILE_HEIGHT * 2);
+              int x_diff = target_x - s_player_x;
+              int y_diff = target_y - s_player_y;
+
+              GBC_Graphics_oam_set_sprite_pos(graphics, 24 + 0, x_diff + 72 - 6, y_diff + 72 + 8);
+              GBC_Graphics_oam_set_sprite_pos(graphics, 24 + 1, x_diff + 72 + 12, y_diff + 72 + 8);
+              GBC_Graphics_oam_set_sprite_pos(graphics, 24 + 2, x_diff + 72 - 6, y_diff + 72 + 16);
+              GBC_Graphics_oam_set_sprite_pos(graphics, 24 + 3, x_diff + 72 + 12, y_diff + 72 + 16);
+            } break;
+            case 7: {
+              uint16_t target_x = s_player_x + direction_to_point(s_player_direction).x * (TILE_WIDTH * 2);
+              uint16_t target_y = s_player_y + direction_to_point(s_player_direction).y * (TILE_HEIGHT * 2);
+              int x_diff = target_x - s_player_x;
+              int y_diff = target_y - s_player_y;
+
+              GBC_Graphics_oam_set_sprite_pos(graphics, 24 + 0, x_diff + 72 - 10, y_diff + 72 + 8);
+              GBC_Graphics_oam_set_sprite_pos(graphics, 24 + 1, x_diff + 72 + 16, y_diff + 72 + 8);
+              GBC_Graphics_oam_set_sprite_pos(graphics, 24 + 2, x_diff + 72 - 10, y_diff + 72 + 16);
+              GBC_Graphics_oam_set_sprite_pos(graphics, 24 + 3, x_diff + 72 + 16, y_diff + 72 + 16);
+            } break;
+          }
+          s_tree_frame++;
           break;
       }
       break;

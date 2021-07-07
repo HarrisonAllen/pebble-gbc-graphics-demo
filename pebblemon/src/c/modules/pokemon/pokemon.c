@@ -58,23 +58,13 @@ static uint8_t s_tree_frame;
 
 
 // TODO: 
-// - Make cut trees cut
-// -- "Would you like to use cut?"
-// -- Replace block on map w/ empty square, & walkable
-// -- Draw cut tree sprite on top of where tree was
-// -- Move halves of tree in opposite direction, blinking
 // - Incorporate:
 // -- All the other data
 // - (Optional) add in a check for if a tile is out of bounds, then clamp it to bounds instead of error->crash
 // - Collectible items:
-// -- Running Shoes (double move speed) - Forest, top half ***IMPLEMENTED***
-// -- Cut (enables cutting of trees) - Forest, bottom half
-// -- Lucky Egg (double exp) - National Park, top right ***IMPLEMENTED***
-// -- Berry (heals 10HP when below half, one time use) - Berry tree route 1, can come back for more
-// -- Leftovers (restore a 1/16 HP each turn) - Far right trash can National Park
-// -- Focus Band (12% chance to prevent fainting) - Cave, in path 
-// -- Protein (Raises attack stat by 25% each battle) - Route 1, top right ***IMPLEMENTED***
-// -- Iron (Raises defense stat by 25% each battle) - Cave, on stairs ***IMPLEMENTED***
+// -- Berry (heals 10HP when below half)
+// -- Leftovers (restore a 1/16 HP each turn)
+// -- Focus Band (12% chance to prevent fainting)
 // - Add in a window overlay when entering a new route
 
 static GPoint direction_to_point(PlayerDirection dir) {

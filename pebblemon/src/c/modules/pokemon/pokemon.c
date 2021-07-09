@@ -55,17 +55,18 @@ static uint8_t s_player_items; // = SET_ITEM(SET_ITEM(0, ITEM_ID_RUNNING_SHOES),
 static bool s_player_goes_first;
 int s_accel_x_cal, s_accel_y_cal;
 static uint8_t s_tree_frame;
+static uint16_t s_health_to_gain;
+static bool s_eaten_berry;
 
 
 // TODO: 
-// - Incorporate:
-// -- All the other data
-// - (Optional) add in a check for if a tile is out of bounds, then clamp it to bounds instead of error->crash
-// - Collectible items:
-// -- Berry (heals 10HP when below half)
-// -- Leftovers (restore a 1/16 HP each turn)
-// -- Focus Band (12% chance to prevent fainting)
+// - Add in a check for if a tile is out of bounds, then clamp it to bounds instead of error->crash
 // - Add in a window overlay when entering a new route
+// - Add in some more animations
+// -- Route 1/2: Fading (random squares)
+// -- National Park: Radial (clockwise circle)
+// -- Cave: Box Out (draw box out from center of screen)
+// -- Forest: Distortion (the wibbly-wobbly one)
 
 static GPoint direction_to_point(PlayerDirection dir) {
     switch (dir) {
@@ -1206,16 +1207,6 @@ static void battle(GBC_Graphics *graphics) {
       } else if (frame_mod == 6) {
         lerp_bg_palettes_to_color(graphics, 0b11111111, 4);
       }
-      /* //Old version, slower, but goes through full spectrum
-      if (s_battle_frame % 20 < 5) {
-        lerp_bg_palettes_to_color(graphics, 0b11000000, s_battle_frame % 5);
-      } else if (s_battle_frame % 20 < 10) {
-        lerp_bg_palettes_to_color(graphics, 0b11000000, 4 - s_battle_frame % 5);
-      } else if (s_battle_frame % 20 < 15) {
-        lerp_bg_palettes_to_color(graphics, 0b11111111, s_battle_frame % 5);
-      } else {
-        lerp_bg_palettes_to_color(graphics, 0b11111111, 4 - s_battle_frame % 5);
-      } */
     #else
       if (frame_mod == 0 || frame_mod == 4) {
         for (uint8_t i = 0; i < 8; i++) {
@@ -1226,20 +1217,6 @@ static void battle(GBC_Graphics *graphics) {
       } else if (frame_mod == 6) {
         set_bg_palettes_to_color(graphics, 1);
       }
-      /* //Old version, slower, matches old slow color transition
-      if (s_battle_frame % 20 == 5) {
-        set_bg_palettes_to_color(graphics, 0);
-      } else if (s_battle_frame % 20 == 10) {
-        for (uint8_t i = 0; i < 8; i++) {
-          GBC_Graphics_set_bg_palette_array(graphics, i, bg_palettes[i]);
-        }
-      } else if (s_battle_frame % 20 == 15) {
-        set_bg_palettes_to_color(graphics, 1);
-      } else if (s_battle_frame % 20 == 0) {
-        for (uint8_t i = 0; i < 8; i++) {
-          GBC_Graphics_set_bg_palette_array(graphics, i, bg_palettes[i]);
-        }
-      } */
     #endif
       s_battle_frame++;
       if (s_battle_frame == 24) {
@@ -1267,6 +1244,9 @@ static void battle(GBC_Graphics *graphics) {
       }
       break;
     case PB_LOAD:
+      for (uint8_t i = 0; i < 40; i++) {
+        GBC_Graphics_oam_hide_sprite(graphics, i);
+      }
       // Load in the pokemon
       s_battle_frame = 0;
       s_battle_state = PB_SLIDE;
@@ -1304,6 +1284,7 @@ static void battle(GBC_Graphics *graphics) {
       //         s_player_pokemon_name, s_player_pokemon_level, s_player_pokemon_health, s_player_pokemon_attack, s_player_pokemon_defense);
       // APP_LOG(APP_LOG_LEVEL_DEBUG, "Enemy Pokemon:\n\tName: %s\n\tLevel: %d\n\tHP: %d\n\tAttack: %d\n\tDefense: %d\n\t",
       //         s_enemy_pokemon_name, s_enemy_pokemon_level, s_enemy_pokemon_health, s_enemy_pokemon_attack, s_enemy_pokemon_defense);
+      s_eaten_berry = false;
 
       // And set up for scroling
       GBC_Graphics_stat_set_line_compare_interrupt_enabled(graphics, true);
@@ -1418,7 +1399,8 @@ static void battle(GBC_Graphics *graphics) {
           }
           draw_enemy_hp_bar(graphics, s_enemy_max_pokemon_health, s_enemy_pokemon_health);
         } else {
-          s_battle_state = s_player_goes_first ? PB_ENEMY_MOVE : PB_PLAYER_TURN_PROMPT;
+          s_battle_state = s_player_goes_first ? PB_ENEMY_MOVE : PB_LEFTOVERS;
+          s_battle_frame = 0;
         }
       }
       break;
@@ -1452,15 +1434,76 @@ static void battle(GBC_Graphics *graphics) {
         if (s_enemy_pokemon_damage > 0) {
           s_player_pokemon_health -= 1;
           s_enemy_pokemon_damage -= 1;
+          if (s_player_pokemon_health == 1 && HAS_ITEM(s_player_items, ITEM_ID_FOCUS_BAND) && (rand() % 12 == 0)) {
+            char focus_dialogue[40];
+            snprintf(focus_dialogue, 40, "%s\nhung on with\nFOCUS BAND!", s_player_pokemon_name);
+            begin_dialogue_from_string(graphics, DIALOGUE_BOUNDS, DIALOGUE_ROOT, focus_dialogue, true);
+            s_prev_game_state = PG_BATTLE;
+            s_game_state = PG_DIALOGUE;
+            s_enemy_pokemon_damage = 0;
+          }
           if (s_player_pokemon_health == 0) {
             s_battle_state = PB_ENEMY_WIN;
             s_battle_frame = 0;
           }
           draw_player_hp_bar(graphics, s_player_max_pokemon_health, s_player_pokemon_health);
         } else {
-          s_battle_state = s_player_goes_first ? PB_PLAYER_TURN_PROMPT : PB_PLAYER_MOVE;
-          s_battle_frame = 0;
+          if (HAS_ITEM(s_player_items, ITEM_ID_BERRY) && !s_eaten_berry && s_player_pokemon_health <= (s_player_max_pokemon_health / 2)) {
+            s_eaten_berry = true;
+            s_battle_state = PB_BERRY;
+            s_battle_frame = 0;
+          } else {
+            s_battle_state = s_player_goes_first ? PB_LEFTOVERS : PB_PLAYER_MOVE;
+            s_battle_frame = 0;
+          }
         }
+      }
+      break;
+    case PB_BERRY:
+      if (s_battle_frame == 0) {
+        char berry_dialogue[40];
+        snprintf(berry_dialogue, 40, "%s ate\nits BERRY!", s_player_pokemon_name);
+        s_clear_dialogue = false;
+        begin_dialogue_from_string(graphics, DIALOGUE_BOUNDS, DIALOGUE_ROOT, berry_dialogue, false);
+        s_prev_game_state = PG_BATTLE;
+        s_game_state = PG_DIALOGUE;
+        s_health_to_gain = 10;
+        s_battle_frame++;
+      } else {
+        if (s_health_to_gain > 0 && s_player_pokemon_health < s_player_max_pokemon_health) {
+          s_health_to_gain -= 1;
+          s_player_pokemon_health += 1;
+          draw_player_hp_bar(graphics, s_player_max_pokemon_health, s_player_pokemon_health);
+        } else {
+          s_battle_frame = 13;
+          s_battle_state = PB_ENEMY_EFFECT;
+        }
+      }
+      break;
+    case PB_LEFTOVERS:
+      if (HAS_ITEM(s_player_items, ITEM_ID_LEFTOVERS)) {
+        if (s_battle_frame == 0) {
+          char leftover_dialogue[40];
+          snprintf(leftover_dialogue, 40, "%s ate\nsome LEFTOVERS!", s_player_pokemon_name);
+          s_clear_dialogue = false;
+          begin_dialogue_from_string(graphics, DIALOGUE_BOUNDS, DIALOGUE_ROOT, leftover_dialogue, false);
+          s_prev_game_state = PG_BATTLE;
+          s_game_state = PG_DIALOGUE;
+          s_health_to_gain = s_player_max_pokemon_health / 16;
+          s_battle_frame++;
+        } else {
+          if (s_health_to_gain > 0 && s_player_pokemon_health < s_player_max_pokemon_health) {
+            s_health_to_gain -= 1;
+            s_player_pokemon_health += 1;
+            draw_player_hp_bar(graphics, s_player_max_pokemon_health, s_player_pokemon_health);
+          } else {
+            s_battle_state = PB_PLAYER_TURN_PROMPT;
+            s_battle_frame = 0;
+          }
+        }
+      } else {
+        s_battle_state = PB_PLAYER_TURN_PROMPT;
+        s_battle_frame = 0;
       }
       break;
     case PB_PLAYER_WIN: {

@@ -30,7 +30,10 @@ typedef enum {
 
 typedef enum {
   PB_FLASH,
-  PB_WIPE,
+  PB_ANIM_BOX,
+  PB_ANIM_DISTORT,
+  PB_ANIM_RADIAL,
+  PB_ANIM_FADE,
   PB_LOAD,
   PB_SLIDE,
   PB_APPEAR,

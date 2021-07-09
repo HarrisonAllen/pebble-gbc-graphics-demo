@@ -63,10 +63,10 @@ static bool s_eaten_berry;
 // - Add in a check for if a tile is out of bounds, then clamp it to bounds instead of error->crash
 // - Add in a window overlay when entering a new route
 // - Add in some more animations
-// -- Route 1/2: Fading (random squares)
-// -- National Park: Radial (clockwise circle)
 // -- Cave: Box Out (draw box out from center of screen)
 // -- Forest: Distortion (the wibbly-wobbly one)
+// -- National Park: Radial (clockwise circle)
+// -- Route 1/2: Fading (random squares)
 
 static GPoint direction_to_point(PlayerDirection dir) {
     switch (dir) {
@@ -1191,6 +1191,18 @@ static void generate_pokemon_stats() {
   s_enemy_pokemon_defense = (rand()%15+5)*(s_enemy_pokemon_level/10.0+1);
 }
 
+static void draw_black_rectangle(GBC_Graphics *graphics, GRect rect_bounds, bool overlay) {
+  uint8_t attrs = GBC_Graphics_attr_make(7, 1, 0, 0, overlay ? 1 : 0);
+  uint8_t root_x = rect_bounds.origin.x;
+  uint8_t root_y = rect_bounds.origin.y;
+
+  for (uint8_t y = 0; y < rect_bounds.size.h; y++) {
+    for (uint8_t x = 0; x < rect_bounds.size.w; x++) {
+      GBC_Graphics_bg_set_tile_and_attrs(graphics, root_x + x, root_y + y, 0, attrs);
+    }
+  }
+}
+
 static void battle(GBC_Graphics *graphics) {
   switch(s_battle_state) {
     case PB_FLASH: {
@@ -1223,11 +1235,35 @@ static void battle(GBC_Graphics *graphics) {
         for (uint8_t i = 0; i < 8; i++) {
           GBC_Graphics_set_bg_palette_array(graphics, i, &palettes[s_route_num][i*PALETTE_SIZE]);
         }
-        s_battle_state = PB_WIPE;
+        switch (s_route_num) {
+          case 0:
+            s_battle_state = PB_ANIM_BOX;
+            break;
+          case 1:
+            s_battle_state = PB_ANIM_DISTORT;
+            break;
+          case 2:
+            s_battle_state = PB_ANIM_RADIAL;
+            break;
+          default:
+            s_battle_state = PB_ANIM_FADE;
+            break;
+        }
         s_battle_frame = 0;
       }
     } break;
-    case PB_WIPE:
+    case PB_ANIM_BOX:
+      if (s_battle_frame <= 8) {
+        draw_black_rectangle(graphics, GRect(8 - s_battle_frame, 8 - s_battle_frame, (s_battle_frame + 1) * 2, (s_battle_frame + 1) * 2), s_battle_frame == 8);
+        s_battle_frame++;
+      } else {
+        s_battle_frame = 0;
+        s_battle_state = PB_LOAD;
+      }
+      break;
+    case PB_ANIM_DISTORT:
+    case PB_ANIM_RADIAL:
+    case PB_ANIM_FADE:
       if (s_battle_frame <= 40) {
         for (uint8_t i = 0; i < 14; i++) {
           GBC_Graphics_bg_set_tile_and_attrs(graphics, rand()%18, rand()%18, 0, GBC_Graphics_attr_make(7, 1, 0, 0, 1));

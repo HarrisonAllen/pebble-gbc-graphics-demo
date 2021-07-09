@@ -48,7 +48,7 @@
 #define TILE_BANK_ANIMS 1
 #define TILE_OFFSET_ANIMS 200
 
-#define ENCOUNTERS_ENABLED false
+#define ENCOUNTERS_ENABLED true
 
 typedef struct {
     uint8_t route_num;

@@ -67,6 +67,7 @@ static bool s_eaten_berry;
 // -- Forest: Distortion (the wibbly-wobbly one)
 // -- National Park: Radial (clockwise circle)
 // -- Route 1/2: Fading (random squares)
+// - Level 100 victory
 
 static GPoint direction_to_point(PlayerDirection dir) {
     switch (dir) {
@@ -113,6 +114,18 @@ static void load_tiles(GBC_Graphics *graphics, uint8_t bg_root_x, uint8_t bg_roo
   }
 }
 
+static void draw_black_rectangle(GBC_Graphics *graphics, GRect rect_bounds, bool overlay) {
+  uint8_t attrs = GBC_Graphics_attr_make(7, 1, 0, 0, overlay ? 1 : 0);
+  uint8_t root_x = rect_bounds.origin.x;
+  uint8_t root_y = rect_bounds.origin.y;
+
+  for (uint8_t y = 0; y < rect_bounds.size.h; y++) {
+    for (uint8_t x = 0; x < rect_bounds.size.w; x++) {
+      GBC_Graphics_bg_set_tile_and_attrs(graphics, root_x + x, root_y + y, 0, attrs);
+    }
+  }
+}
+
 static void load_screen(GBC_Graphics *graphics) {
   for (uint8_t i = 0; i < 8; i++) {
     GBC_Graphics_set_bg_palette_array(graphics, i, &palettes[s_route_num][i*PALETTE_SIZE]);
@@ -122,6 +135,7 @@ static void load_screen(GBC_Graphics *graphics) {
 #endif
   GBC_Graphics_copy_all_bg_palettes(graphics, s_cur_bg_palettes);
   GBC_Graphics_bg_set_scroll_pos(graphics, 0, 0);
+  draw_black_rectangle(graphics, GRect(0, 0, 32, 32), false);
   uint8_t bg_root_x = GBC_Graphics_bg_get_scroll_x(graphics) >> 3;
   uint8_t bg_root_y = GBC_Graphics_bg_get_scroll_y(graphics) >> 3;
   uint16_t tile_root_x = (s_player_x >> 3) - 8;
@@ -1191,16 +1205,11 @@ static void generate_pokemon_stats() {
   s_enemy_pokemon_defense = (rand()%15+5)*(s_enemy_pokemon_level/10.0+1);
 }
 
-static void draw_black_rectangle(GBC_Graphics *graphics, GRect rect_bounds, bool overlay) {
-  uint8_t attrs = GBC_Graphics_attr_make(7, 1, 0, 0, overlay ? 1 : 0);
-  uint8_t root_x = rect_bounds.origin.x;
-  uint8_t root_y = rect_bounds.origin.y;
-
-  for (uint8_t y = 0; y < rect_bounds.size.h; y++) {
-    for (uint8_t x = 0; x < rect_bounds.size.w; x++) {
-      GBC_Graphics_bg_set_tile_and_attrs(graphics, root_x + x, root_y + y, 0, attrs);
-    }
-  }
+static void distortion_callback(GBC_Graphics *graphics) {
+  uint8_t screen_pos = GBC_Graphics_stat_get_line_y_compare(graphics);
+  GBC_Graphics_bg_set_scroll_pos(graphics, 0, 0);
+  GBC_Graphics_bg_move(graphics, sin_lookup(screen_pos*2048) * (s_battle_frame * s_battle_frame) / TRIG_MAX_RATIO, 0);
+  GBC_Graphics_stat_set_line_y_compare(graphics, screen_pos+1);
 }
 
 static void battle(GBC_Graphics *graphics) {
@@ -1262,6 +1271,22 @@ static void battle(GBC_Graphics *graphics) {
       }
       break;
     case PB_ANIM_DISTORT:
+      if (s_battle_frame == 0) {
+        GBC_Graphics_set_line_compare_interrupt_callback(graphics, distortion_callback);
+        GBC_Graphics_stat_set_line_compare_interrupt_enabled(graphics, true);
+        GBC_Graphics_stat_set_line_y_compare(graphics, 0);
+        s_battle_frame++;
+      } else if (s_battle_frame == 10) {
+        GBC_Graphics_stat_set_line_compare_interrupt_enabled(graphics, false);
+        s_battle_frame = 0;
+        GBC_Graphics_bg_set_scroll_pos(graphics, 0, 0);
+        draw_black_rectangle(graphics, GRect(0, 0, 18, 18), true);
+        s_battle_state = PB_LOAD;
+      } else {
+        GBC_Graphics_stat_set_line_y_compare(graphics, 0);
+        s_battle_frame++;
+      }
+      break;
     case PB_ANIM_RADIAL:
     case PB_ANIM_FADE:
       if (s_battle_frame <= 40) {

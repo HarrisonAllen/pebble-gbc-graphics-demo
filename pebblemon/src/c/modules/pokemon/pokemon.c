@@ -41,7 +41,7 @@ static uint8_t s_route_num = 3;
 static uint8_t s_warp_route;
 static uint16_t s_warp_x, s_warp_y;
 static uint8_t s_player_level = 1;
-static int s_player_exp = 0;
+static int s_player_exp;
 static bool s_move_mode_toggle = true, s_move_toggle;
 static bool s_turn_mode_tilt;
 static bool s_backlight_on;
@@ -51,7 +51,7 @@ static int s_to_next_level, s_to_cur_level;
 static int s_exp_gained;
 static bool s_up_press_queued, s_down_press_queued;
 static uint8_t s_escape_odds;
-static uint8_t s_player_items; // = SET_ITEM(SET_ITEM(0, ITEM_ID_RUNNING_SHOES), ITEM_ID_LUCKY_EGG);
+static uint8_t s_player_items;
 static bool s_player_goes_first;
 int s_accel_x_cal, s_accel_y_cal;
 static uint8_t s_tree_frame;
@@ -59,10 +59,8 @@ static uint16_t s_health_to_gain;
 static bool s_eaten_berry;
 
 
-// TODO: 
-// - Add in a check for if a tile is out of bounds, then clamp it to bounds instead of error->crash
+// TODO:
 // - Add in a window overlay when entering a new route
-// - Level 100 victory
 
 static GPoint direction_to_point(PlayerDirection dir) {
     switch (dir) {
@@ -1136,7 +1134,7 @@ void draw_option_menu(GBC_Graphics *graphics) {
   draw_text_at_location(graphics, GPoint(OPTION_ROOT_X+9, OPTION_ROOT_Y+7), s_text_speed == 0 ? ":SLOW" : s_text_speed == 1 ? ":MID" : ":FAST");
   draw_text_at_location(graphics, GPoint(OPTION_ROOT_X+9, OPTION_ROOT_Y+9), s_backlight_on ? ":ON" : ":AUTO");
   char data[4] = {0};
-  snprintf(data, 4, ":%d", s_player_sprite);
+  snprintf(data, 4, ":%d", s_player_sprite+1);
   draw_text_at_location(graphics, GPoint(OPTION_ROOT_X+9, OPTION_ROOT_Y+11), data);
   set_preview_sprites(graphics, GPoint(OPTION_ROOT_X+13, OPTION_ROOT_Y+10), D_DOWN, false, false, 8);
 }
@@ -1673,7 +1671,11 @@ static void battle(GBC_Graphics *graphics) {
       if (s_battle_frame == 0) {
         s_exp_gained = calculate_exp_gain(s_enemy_pokemon_level, HAS_ITEM(s_player_items, ITEM_ID_LUCKY_EGG));
         char exp_dialogue[40];
-        snprintf(exp_dialogue, 40, "Gained %d EXP!", s_exp_gained);
+        if (HAS_ITEM(s_player_items, ITEM_ID_LUCKY_EGG)) { 
+          snprintf(exp_dialogue, 40, "Gained a boosted\n%d EXP!", s_exp_gained);
+        } else {
+          snprintf(exp_dialogue, 40, "Gained %d EXP!", s_exp_gained);
+        }
         begin_dialogue_from_string(graphics, DIALOGUE_BOUNDS, DIALOGUE_ROOT, exp_dialogue, true);
         s_prev_game_state = PG_BATTLE;
         s_game_state = PG_DIALOGUE;
@@ -1698,8 +1700,10 @@ static void battle(GBC_Graphics *graphics) {
             draw_text_at_location(graphics, GPoint(12, 8), level_text);
             s_to_cur_level = s_to_next_level;
             s_to_next_level = cube(s_player_level+1);
-            char exp_dialogue[40];
-            snprintf(exp_dialogue, 40, "Lvl grew to %d!%s", s_player_level, (s_player_level % 5 == 0) ? "\n\nSprite unlocked!" : "");
+            char exp_dialogue[120];
+            snprintf(exp_dialogue, 120, "Lvl grew to %d!%s%s", s_player_level, 
+                     (s_player_level % 5 == 0) ? "\n\nSprite unlocked!" : "",
+                     s_player_level == 100 ? "\n\nCongratulations!\nYou unlocked all\nof the sprites!" : "");
             begin_dialogue_from_string(graphics, DIALOGUE_BOUNDS, DIALOGUE_ROOT, exp_dialogue, true);
             s_prev_game_state = PG_BATTLE;
             s_game_state = PG_DIALOGUE;

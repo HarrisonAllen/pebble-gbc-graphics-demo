@@ -627,6 +627,9 @@ static void play(GBC_Graphics *graphics) {
   if (s_anim_frame == 0) {
     animate_tiles(graphics, TILE_BANK_WORLD, s_route_num);
   }
+  if (is_route_frame_animating()) {
+    step_route_frame_animation(graphics);
+  }
   s_poll_frame = (s_poll_frame + 1) % 8;
   if (s_player_mode == P_STAND) {
     if (s_up_press_queued) {
@@ -1023,6 +1026,7 @@ static void play(GBC_Graphics *graphics) {
         case 7:
           if (s_player_direction == D_DOWN) {
             s_player_mode = P_STAND;
+            begin_route_frame_animation(graphics, route_names[s_route_num]);
           } else {
             s_player_mode = P_WARP;
             s_walk_frame = 0;
@@ -1089,6 +1093,7 @@ static void play(GBC_Graphics *graphics) {
           s_walk_frame = 0;
         } else {
           s_player_mode = P_STAND;
+          begin_route_frame_animation(graphics, route_names[s_route_num]);
         }
       }
       break;
@@ -1242,6 +1247,9 @@ int clamp(int to_clamp, int min_val, int max_val) {
 static void battle(GBC_Graphics *graphics) {
   switch(s_battle_state) {
     case PB_FLASH: {
+      if (s_battle_frame == 0) {
+        quit_route_frame_animation(graphics);
+      }
       uint8_t frame_mod = s_battle_frame % 8;
     #if defined(PBL_COLOR)
       if (frame_mod == 0 || frame_mod == 4) {
@@ -2386,6 +2394,9 @@ void Pokemon_handle_back(GBC_Graphics *graphics) {
       s_game_state = PG_PAUSE_QUEUED;
       if (s_move_mode_toggle) {
         s_move_toggle = false;
+      }
+      if (is_route_frame_animating()) {
+        quit_route_frame_animation(graphics);
       }
       break;
     case PG_PAUSE:

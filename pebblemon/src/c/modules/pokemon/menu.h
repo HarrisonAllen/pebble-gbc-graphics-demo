@@ -28,6 +28,21 @@
 #define HP_RED 0b11110000
 #define EXP_BLUE 0b11001011
 
+#define ROUTE_FRAME_NW 121
+#define ROUTE_FRAME_N1 122
+#define ROUTE_FRAME_N2 123
+#define ROUTE_FRAME_NE 124
+#define ROUTE_FRAME_W1 125
+#define ROUTE_FRAME_W2 126
+#define ROUTE_FRAME_SW 127
+#define ROUTE_FRAME_S1 128
+#define ROUTE_FRAME_S2 129
+#define ROUTE_FRAME_SE 130
+#define ROUTE_FRAME_E1 131
+#define ROUTE_FRAME_E2 132
+#define ROUTE_FRAME_C  133
+
+
 typedef enum {
   D_IDLE,
   D_WRITING,
@@ -67,3 +82,8 @@ void draw_battle_frames(GBC_Graphics *graphics);
 void draw_enemy_hp_bar(GBC_Graphics *graphics, uint16_t max_health, uint16_t cur_health);
 void draw_player_hp_bar(GBC_Graphics *graphics, uint16_t max_health, uint16_t cur_health);
 void draw_exp_bar(GBC_Graphics *graphics, int max_exp, int cur_exp);
+
+void begin_route_frame_animation(GBC_Graphics *graphics, char *route_name);
+void step_route_frame_animation(GBC_Graphics *graphics);
+bool is_route_frame_animating();
+void quit_route_frame_animation(GBC_Graphics *graphics);

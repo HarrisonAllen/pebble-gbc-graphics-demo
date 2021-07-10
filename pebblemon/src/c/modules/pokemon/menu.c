@@ -13,6 +13,8 @@ static uint8_t s_cur_line = 0;
 static GRect s_dialogue_bounds;
 static bool s_dialogue_waits;
 static bool s_menu_tight;
+static uint8_t s_window_offset, s_window_frame;
+static bool s_route_frame_animating;
 
 
 void draw_menu_rectangle(GBC_Graphics *graphics, GRect menu_bounds) {
@@ -147,6 +149,9 @@ void move_cursor_up(GBC_Graphics *graphics) {
 }
 
 void begin_dialogue_from_string(GBC_Graphics *graphics, GRect dialogue_bounds, GPoint dialogue_root, char *dialogue, bool wait) {
+  if (s_route_frame_animating) {
+    quit_route_frame_animation(graphics);
+  }
   unload_dialogue();
   s_dialogue_buffer = (uint8_t*)malloc(strlen(dialogue)+1);
   memcpy(s_dialogue_buffer, dialogue, strlen(dialogue)+1);
@@ -162,6 +167,9 @@ void begin_dialogue_from_string(GBC_Graphics *graphics, GRect dialogue_bounds, G
 }
 
 void begin_dialogue(GBC_Graphics *graphics, GRect dialogue_bounds, GPoint dialogue_root, uint16_t dialogue_id, bool wait) {
+  if (s_route_frame_animating) {
+    quit_route_frame_animation(graphics);
+  }
   ResHandle data_handle = resource_get_handle(RESOURCE_ID_DATA_DIALOGUE_DATA);
   uint8_t *data_buffer = (uint8_t*)malloc(4);
   resource_load_byte_range(data_handle, dialogue_id * 4, data_buffer, 4);
@@ -384,4 +392,72 @@ void draw_exp_bar(GBC_Graphics *graphics, int max_exp, int cur_exp) {
   for (bar_pos++; bar_pos < bar_len; bar_pos++) {
     GBC_Graphics_bg_set_tile_and_attrs(graphics, bar_start.x-bar_pos, bar_start.y, BATTLE_HEALTH_EMPTY, attrs);
   }
+}
+
+static void draw_route_frame(GBC_Graphics *graphics) {
+  uint8_t attrs = GBC_Graphics_attr_make(6, MENU_VRAM_BANK, false, false, true);
+  for (uint8_t x = 0; x < 18; x++) {
+    for (uint8_t y = 0; y < 4; y++) {
+      GBC_Graphics_window_set_tile_and_attrs(graphics, x, y, ROUTE_FRAME_C, attrs);
+    }
+  }
+  for (uint8_t x = 0; x < 18; x++) {
+    GBC_Graphics_window_set_tile_and_attrs(graphics, x, 0, x % 4 < 2 ? ROUTE_FRAME_N2 : ROUTE_FRAME_N1, attrs);
+    GBC_Graphics_window_set_tile_and_attrs(graphics, x, 3, x % 4 < 2 ? ROUTE_FRAME_S2 : ROUTE_FRAME_S1, attrs);
+  }
+  GBC_Graphics_window_set_tile_and_attrs(graphics, 0, 0, ROUTE_FRAME_NW, attrs);
+  GBC_Graphics_window_set_tile_and_attrs(graphics, 0, 1, ROUTE_FRAME_W1, attrs);
+  GBC_Graphics_window_set_tile_and_attrs(graphics, 0, 2, ROUTE_FRAME_W2, attrs);
+  GBC_Graphics_window_set_tile_and_attrs(graphics, 0, 3, ROUTE_FRAME_SW, attrs);
+  GBC_Graphics_window_set_tile_and_attrs(graphics, 17, 0, ROUTE_FRAME_NE, attrs);
+  GBC_Graphics_window_set_tile_and_attrs(graphics, 17, 1, ROUTE_FRAME_E1, attrs);
+  GBC_Graphics_window_set_tile_and_attrs(graphics, 17, 2, ROUTE_FRAME_E2, attrs);
+  GBC_Graphics_window_set_tile_and_attrs(graphics, 17, 3, ROUTE_FRAME_SE, attrs);
+}
+
+void begin_route_frame_animation(GBC_Graphics *graphics, char *route_name) {
+#if defined(PBL_COLOR)
+  GBC_Graphics_set_bg_palette(graphics, 6, 0b11111110, 0b11111110, 0b11100100, 0b11000000);
+#else
+  GBC_Graphics_set_bg_palette(graphics, 6, 0, 1, 0, 1);
+#endif
+  GBC_Graphics_lcdc_set_window_layer_enabled(graphics, true);
+  GBC_Graphics_window_set_offset_y(graphics, 144);
+  s_window_frame = 0;
+
+  draw_route_frame(graphics);
+  
+  uint16_t num_chars = strlen(route_name);
+  uint8_t x = 1 + (16 - num_chars) / 2;
+  uint8_t y = 2;
+  uint8_t vram_pos;
+  char char_to_write;
+  for (uint16_t i = 0; i < num_chars; i++) {
+    char_to_write = route_name[i];
+    vram_pos = char_to_write - MENU_ASCII_OFFSET;
+    GBC_Graphics_window_set_tile(graphics, x, y, vram_pos);
+    x++;
+  }
+  s_route_frame_animating = true;
+}
+
+void step_route_frame_animation(GBC_Graphics *graphics) {
+  if (s_window_frame < 16) {
+    GBC_Graphics_window_move(graphics, 0, -2);
+  } else if (s_window_frame >= 60 && s_window_frame < 76) {
+    GBC_Graphics_window_move(graphics, 0, 2);
+  } else if (s_window_frame == 76) {
+    quit_route_frame_animation(graphics);
+  }
+  s_window_frame++;
+}
+
+bool is_route_frame_animating() {
+  return s_route_frame_animating;
+}
+
+void quit_route_frame_animation(GBC_Graphics *graphics) {
+  GBC_Graphics_window_set_offset_y(graphics, 144);
+  GBC_Graphics_lcdc_set_window_layer_enabled(graphics, false);
+  s_route_frame_animating = false;
 }

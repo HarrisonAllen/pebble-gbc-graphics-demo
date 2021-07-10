@@ -24,6 +24,14 @@ uint32_t map_files[] = {
 	RESOURCE_ID_DATA_ROUTE_2,
 };
 
+char *route_names[] = {
+	"CAVE",
+	"FOREST",
+	"NATIONAL PARK",
+	"ROUTE 1",
+	"MOUNTAIN PASS",
+};
+
 typedef enum {
     BLOCK,
     WALK,

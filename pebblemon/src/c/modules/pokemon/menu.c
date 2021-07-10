@@ -419,7 +419,7 @@ void begin_route_frame_animation(GBC_Graphics *graphics, char *route_name) {
 #if defined(PBL_COLOR)
   GBC_Graphics_set_bg_palette(graphics, 6, 0b11111110, 0b11111110, 0b11100100, 0b11000000);
 #else
-  GBC_Graphics_set_bg_palette(graphics, 6, 0, 1, 0, 1);
+  GBC_Graphics_set_bg_palette(graphics, 6, 0, 0, 1, 1);
 #endif
   GBC_Graphics_lcdc_set_window_layer_enabled(graphics, true);
   GBC_Graphics_window_set_offset_y(graphics, 144);

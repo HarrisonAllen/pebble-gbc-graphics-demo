@@ -62,11 +62,6 @@ static bool s_eaten_berry;
 // TODO: 
 // - Add in a check for if a tile is out of bounds, then clamp it to bounds instead of error->crash
 // - Add in a window overlay when entering a new route
-// - Add in some more animations
-// -- Cave: Box Out (draw box out from center of screen)
-// -- Forest: Distortion (the wibbly-wobbly one)
-// -- National Park: Radial (clockwise circle)
-// -- Route 1/2: Fading (random squares)
 // - Level 100 victory
 
 static GPoint direction_to_point(PlayerDirection dir) {
@@ -1212,6 +1207,40 @@ static void distortion_callback(GBC_Graphics *graphics) {
   GBC_Graphics_stat_set_line_y_compare(graphics, screen_pos+1);
 }
 
+// Implementation of Bresenham's Line Drawing Algorithm, from wikipedia
+static void draw_line(GBC_Graphics *graphics, int x0, int y0, int x1, int y1) {
+  uint8_t attrs = GBC_Graphics_attr_make(7, 1, 0, 0, 0);
+  int dx = abs(x1-x0);
+  int sx = x0<x1 ? 1 : -1;
+  int dy = -abs(y1-y0);
+  int sy = y0<y1 ? 1 : -1;
+
+  int err = dx+dy;
+  while (true) {
+    GBC_Graphics_bg_set_tile_and_attrs(graphics, x0, y0, 0, attrs);
+    if (x0 == x1 && y0 == y1) break;
+    int e2 = 2*err;
+    if (e2 >= dy) {
+      err += dy;
+      x0 += sx;
+    }
+    if (e2 <= dx) {
+      err += dx;
+      y0 += sy;
+    }
+  }
+}
+
+int clamp(int to_clamp, int min_val, int max_val) {
+  if (to_clamp < min_val) {
+    return min_val;
+  }
+  if (to_clamp > max_val) {
+    return max_val;
+  }
+  return to_clamp;
+}
+
 static void battle(GBC_Graphics *graphics) {
   switch(s_battle_state) {
     case PB_FLASH: {
@@ -1222,11 +1251,11 @@ static void battle(GBC_Graphics *graphics) {
       } else if (frame_mod == 1 || frame_mod == 3) {
         lerp_bg_palettes_to_color(graphics, 0b11000000, 2);
       } else if (frame_mod == 2) {
-        lerp_bg_palettes_to_color(graphics, 0b11000000, 4);
+        lerp_bg_palettes_to_color(graphics, 0b11000000, 3);
       } else if (frame_mod == 5 || frame_mod == 7) {
         lerp_bg_palettes_to_color(graphics, 0b11111111, 2);
       } else if (frame_mod == 6) {
-        lerp_bg_palettes_to_color(graphics, 0b11111111, 4);
+        lerp_bg_palettes_to_color(graphics, 0b11111111, 3);
       }
     #else
       if (frame_mod == 0 || frame_mod == 4) {
@@ -1245,23 +1274,23 @@ static void battle(GBC_Graphics *graphics) {
           GBC_Graphics_set_bg_palette_array(graphics, i, &palettes[s_route_num][i*PALETTE_SIZE]);
         }
         switch (s_route_num) {
-          case 0:
+          case 0: // Cave
             s_battle_state = PB_ANIM_BOX;
             break;
-          case 1:
+          case 1: // Forest
             s_battle_state = PB_ANIM_DISTORT;
             break;
-          case 2:
+          case 2: // National Park
             s_battle_state = PB_ANIM_RADIAL;
             break;
-          default:
+          default: // Routes
             s_battle_state = PB_ANIM_FADE;
             break;
         }
         s_battle_frame = 0;
       }
     } break;
-    case PB_ANIM_BOX:
+    case PB_ANIM_BOX: // Box that expands outwards
       if (s_battle_frame <= 8) {
         draw_black_rectangle(graphics, GRect(8 - s_battle_frame, 8 - s_battle_frame, (s_battle_frame + 1) * 2, (s_battle_frame + 1) * 2), s_battle_frame == 8);
         s_battle_frame++;
@@ -1270,7 +1299,7 @@ static void battle(GBC_Graphics *graphics) {
         s_battle_state = PB_LOAD;
       }
       break;
-    case PB_ANIM_DISTORT:
+    case PB_ANIM_DISTORT: // Distort screen
       if (s_battle_frame == 0) {
         GBC_Graphics_set_line_compare_interrupt_callback(graphics, distortion_callback);
         GBC_Graphics_stat_set_line_compare_interrupt_enabled(graphics, true);
@@ -1287,10 +1316,51 @@ static void battle(GBC_Graphics *graphics) {
         s_battle_frame++;
       }
       break;
-    case PB_ANIM_RADIAL:
-    case PB_ANIM_FADE:
-      if (s_battle_frame <= 40) {
-        for (uint8_t i = 0; i < 14; i++) {
+    case PB_ANIM_RADIAL: { // Radial Wipe clockwise from 9 o'clock
+      // While drawing one line per frame is very clean, we gotta speed it up
+      // Thus, draw four lines per frame instead
+      for (uint8_t i = 0; i < 4; i++) {
+        int angle = TRIG_MAX_ANGLE * s_battle_frame / 128 ;
+        
+        uint8_t center_x, center_y;
+        if (s_battle_frame < 32 || s_battle_frame >= 96) {
+          center_x = 8;
+        } else {
+          center_x = 9;
+        }
+        if (s_battle_frame < 64) {
+          center_y = 8;
+        } else {
+          center_y = 9;
+        }
+        int end_x = clamp((-cos_lookup(angle) * 12 / TRIG_MAX_RATIO) + center_x, 0, 17);
+        int end_y = clamp((-sin_lookup(angle) * 12 / TRIG_MAX_RATIO) + center_y, 0, 17);
+        draw_line(graphics, center_x, center_y, end_x, end_y);
+
+        // Make up for the lines that the algorithm fails to hit
+        if (s_battle_frame == 16) {
+          draw_line(graphics, center_x, center_y, 0, 0);
+        }
+        if (s_battle_frame == 48) {
+          draw_line(graphics, center_x, center_y, 17, 0);
+        }
+        if (s_battle_frame == 80) {
+          draw_line(graphics, center_x, center_y, 17, 17);
+        }
+        if (s_battle_frame == 112) {
+          draw_line(graphics, center_x, center_y, 0, 17);
+        }
+        s_battle_frame ++;
+      }
+      if (s_battle_frame == 128) {
+        s_battle_frame = 0;
+        draw_black_rectangle(graphics, GRect(0, 0, 18, 18), true);
+        s_battle_state = PB_LOAD;
+      }
+    } break;
+    case PB_ANIM_FADE: // Random squares
+      if (s_battle_frame <= 32) {
+        for (uint8_t i = 0; i < 16; i++) {
           GBC_Graphics_bg_set_tile_and_attrs(graphics, rand()%18, rand()%18, 0, GBC_Graphics_attr_make(7, 1, 0, 0, 1));
         }
         s_battle_frame++;

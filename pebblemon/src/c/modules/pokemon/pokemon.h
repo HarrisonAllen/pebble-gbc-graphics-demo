@@ -49,13 +49,14 @@
 #define TILE_OFFSET_ANIMS 200
 
 #define ENCOUNTERS_ENABLED true
+#define DEMO_MODE false
+#define RAND_SPRITES false
 
 typedef struct {
     uint8_t route_num;
     uint16_t player_x;
     uint16_t player_y;
     uint8_t player_sprite;
-    // uint8_t player_color;
     uint8_t player_direction;
     bool move_mode_toggle;
     bool turn_mode_tilt;

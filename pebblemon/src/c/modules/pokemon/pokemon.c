@@ -40,7 +40,7 @@ static uint16_t s_stats_battles, s_stats_wins, s_stats_losses, s_stats_runs;
 static uint8_t s_route_num = 3;
 static uint8_t s_warp_route;
 static uint16_t s_warp_x, s_warp_y;
-static uint8_t s_player_level = 1;
+static uint8_t s_player_level = DEMO_MODE ? 100 : 1;
 static int s_player_exp;
 static bool s_move_mode_toggle = true, s_move_toggle;
 static bool s_turn_mode_tilt;
@@ -48,7 +48,7 @@ static bool s_backlight_on;
 static uint8_t s_player_sprite = 0;
 static uint8_t s_text_speed = 1;
 static int s_to_next_level, s_to_cur_level;
-static int s_exp_gained;
+static int s_exp_gained = DEMO_MODE ? 100*100*100 : 0;
 static bool s_up_press_queued, s_down_press_queued;
 static uint8_t s_escape_odds;
 static uint8_t s_player_items;
@@ -57,10 +57,13 @@ int s_accel_x_cal, s_accel_y_cal;
 static uint8_t s_tree_frame;
 static uint16_t s_health_to_gain;
 static bool s_eaten_berry;
-
+static uint8_t s_demo_frame;
 
 // TODO:
-// - Add in a window overlay when entering a new route
+// - Clean up code, remove debug logs, add comments
+// - Prep github repo
+// - Put together app store assets
+// - set spawn location to in front of the sign
 
 static GPoint direction_to_point(PlayerDirection dir) {
     switch (dir) {
@@ -383,7 +386,6 @@ static void load_resources(GBC_Graphics *graphics) {
   resource_load(handle, s_world_map, res_size);
     
   int object_num = check_for_object(s_player_x, s_player_y);
-  APP_LOG(APP_LOG_LEVEL_DEBUG, "Found object %d at (%d, %d) and is %d", object_num, object_num != -1 ? objects[object_num][3] : -1);
   if (object_num != -1 && objects[object_num][3] == PO_TREE) { // Make sure player doesn't spawn in tree
     set_block(s_world_map, s_player_x, s_player_y, replacement_blocks[s_route_num]);
   }
@@ -623,6 +625,12 @@ static void set_bg_palettes_to_color(GBC_Graphics *graphics, uint8_t color) {
 #endif
 
 static void play(GBC_Graphics *graphics) {
+  s_demo_frame = (s_demo_frame + 1) % 16;
+  if (s_demo_frame == 0 && RAND_SPRITES) {
+    s_player_sprite = (s_player_sprite + 1) % 22;
+    load_player_sprites(graphics);
+    // set_player_sprites(graphics, false, s_player_direction == D_RIGHT);
+  }
   s_anim_frame = (s_anim_frame + 1) % 8;
   if (s_anim_frame == 0) {
     animate_tiles(graphics, TILE_BANK_WORLD, s_route_num);
@@ -1249,6 +1257,10 @@ static void battle(GBC_Graphics *graphics) {
     case PB_FLASH: {
       if (s_battle_frame == 0) {
         quit_route_frame_animation(graphics);
+        if (DEMO_MODE) {
+          s_player_level = rand()%100+1;
+          s_player_exp = cube(s_player_level) + rand() % (cube(s_player_level+1) - cube(s_player_level));
+        }
       }
       uint8_t frame_mod = s_battle_frame % 8;
     #if defined(PBL_COLOR)
@@ -2184,6 +2196,7 @@ void Pokemon_handle_select_click(GBC_Graphics *graphics) {
             s_move_mode_toggle = data.move_mode_toggle;
             s_turn_mode_tilt = data.turn_mode_tilt;
             s_backlight_on = data.backlight_on;
+            light_enable(s_backlight_on);
             s_text_speed = data.text_speed;
             s_player_level = data.player_level;
             s_to_next_level = cube(s_player_level+1);

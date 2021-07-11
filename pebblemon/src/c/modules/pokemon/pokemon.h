@@ -39,8 +39,8 @@
     #define FRAME_SKIP 1
 #endif
 
-#define PLAYER_ORIGIN_X 16*27
-#define PLAYER_ORIGIN_Y 16*7
+#define PLAYER_ORIGIN_X 16*51
+#define PLAYER_ORIGIN_Y 16*13
 
 #define TILE_BANK_MENU 1
 #define TILE_BANK_WORLD 0

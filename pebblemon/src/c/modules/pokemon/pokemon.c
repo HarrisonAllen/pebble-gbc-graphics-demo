@@ -77,7 +77,6 @@ static bool s_game_started;
 // TODO:
 // - Prep github repo
 // - Put together app store assets
-// - Fix saves
 
 static GPoint direction_to_point(PlayerDirection dir) {
     switch (dir) {

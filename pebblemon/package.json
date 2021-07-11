@@ -1,5 +1,5 @@
 {
-  "name": "pebblemon-demo",
+  "name": "pebblemon",
   "author": "Harrison Allen",
   "version": "1.0.0",
   "keywords": [
@@ -8,7 +8,7 @@
   "private": true,
   "dependencies": {},
   "pebble": {
-    "displayName": "Pebblemon Demo",
+    "displayName": "Pebblemon",
     "uuid": "fc283b24-ec17-4fce-be28-099954c188a9",
     "sdkVersion": "3",
     "enableMultiJS": true,

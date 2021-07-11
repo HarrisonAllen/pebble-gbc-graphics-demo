@@ -42,7 +42,7 @@ static uint8_t s_warp_route;
 static uint16_t s_warp_x, s_warp_y;
 static uint8_t s_player_level = DEMO_MODE ? 100 : 1;
 static int s_player_exp;
-static bool s_move_mode_toggle = true, s_move_toggle;
+static bool s_move_mode_toggle, s_move_toggle;
 static bool s_turn_mode_tilt;
 static bool s_backlight_on;
 static uint8_t s_player_sprite = 0;
@@ -63,7 +63,6 @@ static uint8_t s_demo_frame;
 // - Clean up code, remove debug logs, add comments
 // - Prep github repo
 // - Put together app store assets
-// - set spawn location to in front of the sign
 
 static GPoint direction_to_point(PlayerDirection dir) {
     switch (dir) {

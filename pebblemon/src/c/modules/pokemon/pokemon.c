@@ -73,11 +73,6 @@ static bool s_clear_dialogue = true;
 static uint8_t s_cur_bg_palettes[PALETTE_BANK_SIZE];
 static bool s_game_started;
 
-
-// TODO:
-// - Prep github repo
-// - Put together app store assets
-
 static GPoint direction_to_point(PlayerDirection dir) {
     switch (dir) {
         case D_UP:  return GPoint(0, -1);

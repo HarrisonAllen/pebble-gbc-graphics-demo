@@ -441,7 +441,6 @@ static void render_sprite_graphics(GBC_Graphics *self, Layer *layer, GContext *c
           map_tile_y = map_y >> 3; // map_y / TILE_HEIGHT
 
           // Check if the background pixel has priority
-          // TODO: This may work, but need to do some tests
           bg_tile_attr = self->bg_attrmap[map_tile_x + (map_tile_y << 5)];
           if (bg_tile_attr & ATTR_PRIORITY_FLAG) {
             continue;

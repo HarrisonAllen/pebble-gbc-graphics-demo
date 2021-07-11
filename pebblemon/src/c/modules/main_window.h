@@ -2,12 +2,9 @@
 
 #include <pebble.h>
 
-#if defined(PBL_COLOR)
-#define FRAME_DURATION 2 // In milliseconds
-#else
+// Very low frame duration, draw as fast as possible. 1ms leads
+// to strange behavior, so I alwyas go with 2
 #define FRAME_DURATION 2
-#endif
-#define FPS_TIMER_DELAY 1000 // ms
 
 void main_window_mark_background_dirty();
 

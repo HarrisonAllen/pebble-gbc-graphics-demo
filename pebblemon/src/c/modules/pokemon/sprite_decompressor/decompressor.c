@@ -1,6 +1,8 @@
 #include "decompressor.h"
 #include "bit_reader.h"
 
+const static bool s_debug;
+
 uint16_t (*s_read)(uint8_t) = BitReader_read_bits;
 
 static uint8_t read_pair() {
@@ -63,7 +65,7 @@ const uint8_t DELTA_DECODE_NIBBLE[] = {
 };
 
 static void delta_decode_buffer(uint8_t width, uint8_t height, uint8_t *buffer) {
-    APP_LOG(APP_LOG_LEVEL_DEBUG, "Applying Delta encoding");
+    if (s_debug) (APP_LOG_LEVEL_DEBUG, "Applying Delta encoding");
 
     for (uint16_t row = 0; row < height * 8; row++) {
         uint8_t state = 0;
@@ -134,7 +136,7 @@ void load_pokemon_sprite(uint32_t resource_id, uint32_t data_start, uint16_t dat
     BitReader_init(resource_id, data_start, data_size);
     uint8_t width = s_read(4);
     uint8_t height = s_read(4); 
-    APP_LOG(APP_LOG_LEVEL_DEBUG, "Sprite size: (%d, %d)", width, height);
+    if (s_debug) (APP_LOG_LEVEL_DEBUG, "Sprite size: (%d, %d)", width, height);
 
     uint8_t *memory_buffer = (uint8_t*)malloc(1176); // 7 tiles * 7 tiles * 8 bytes per tile * 3 planes
     memset(memory_buffer, 0, 1176);
@@ -151,9 +153,9 @@ void load_pokemon_sprite(uint32_t resource_id, uint32_t data_start, uint16_t dat
         buffer_0 = buffer_b;
         buffer_1 = buffer_c;
     }
-    APP_LOG(APP_LOG_LEVEL_DEBUG, "Bit plane order detected: BP0 in %c", invert_buffers ? 'C' : 'B');
+    if (s_debug) (APP_LOG_LEVEL_DEBUG, "Bit plane order detected: BP0 in %c", invert_buffers ? 'C' : 'B');
 
-    APP_LOG(APP_LOG_LEVEL_DEBUG, "Decompressing Bit Plane 0");
+    if (s_debug) (APP_LOG_LEVEL_DEBUG, "Decompressing Bit Plane 0");
     decompress_to_buffer(width, height, buffer_0);
 
     uint8_t mode = s_read(1);
@@ -162,11 +164,11 @@ void load_pokemon_sprite(uint32_t resource_id, uint32_t data_start, uint16_t dat
     }
     mode += 1;
 
-    APP_LOG(APP_LOG_LEVEL_DEBUG, "Decompressing Bit Plane 1");
+    if (s_debug) (APP_LOG_LEVEL_DEBUG, "Decompressing Bit Plane 1");
     decompress_to_buffer(width, height, buffer_1);
-    APP_LOG(APP_LOG_LEVEL_DEBUG, "Total bits read: %d", BitReader_get_pointer());
+    if (s_debug) (APP_LOG_LEVEL_DEBUG, "Total bits read: %d", BitReader_get_pointer());
 
-    APP_LOG(APP_LOG_LEVEL_DEBUG, "Decoding mode %d detected", mode);
+    if (s_debug) (APP_LOG_LEVEL_DEBUG, "Decoding mode %d detected", mode);
 
     if (mode != 2) {
         delta_decode_buffer(width, height, buffer_1);
@@ -177,17 +179,17 @@ void load_pokemon_sprite(uint32_t resource_id, uint32_t data_start, uint16_t dat
     if (mode != 1) {
         xor_buffers(width, height, buffer_1, buffer_0);
     }
-    APP_LOG(APP_LOG_LEVEL_DEBUG, "Decompression complete");
+    if (s_debug) (APP_LOG_LEVEL_DEBUG, "Decompression complete");
 
-    APP_LOG(APP_LOG_LEVEL_DEBUG, "Adjusting the position of the sprite for a size of %dx%d", width, height);
+    if (s_debug) (APP_LOG_LEVEL_DEBUG, "Adjusting the position of the sprite for a size of %dx%d", width, height);
     adjust_position(width, height, buffer_b, buffer_a);
     adjust_position(width, height, buffer_c, buffer_b);
 
     zip_bit_planes(memory_buffer);
-    APP_LOG(APP_LOG_LEVEL_DEBUG, "Processing complete");
+    if (s_debug) (APP_LOG_LEVEL_DEBUG, "Processing complete");
 
     memcpy(dest_buffer, &memory_buffer[392], 784);
-    APP_LOG(APP_LOG_LEVEL_DEBUG, "Decompressed sprite copied to vram");
+    if (s_debug) (APP_LOG_LEVEL_DEBUG, "Decompressed sprite copied to vram");
 
     free(memory_buffer);
     BitReader_deinit();

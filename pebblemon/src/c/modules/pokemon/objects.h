@@ -4,7 +4,7 @@
 
 typedef enum {
     PO_NONE, // data: 
-    PO_TEXT, // data: dialogue 
+    PO_TEXT, // data: dialogue index
     PO_TREE, // data: 
     PO_WARP, // data: route warp, new x, new y
 } PokemonObjectTypes;
@@ -51,8 +51,6 @@ const int16_t R2_DOOR_3[] = {4, 6, 5, PO_WARP, 0, 19*16, 33*16};
 const int16_t R2_SIGN_1[] = {4, 9, 59, PO_TEXT, 16};
 const int16_t R2_SIGN_2[] = {4, 7, 6, PO_TEXT, 17};
 
-// I'm doing it like this so that I can create a jagged array
-// This way, a dialogue object doesn't need to store 4 extra bytes of data
 const int16_t *objects[] = {
     CA_DOOR_1,
     CA_DOOR_2,

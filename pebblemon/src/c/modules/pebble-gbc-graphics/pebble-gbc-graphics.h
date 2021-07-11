@@ -5,7 +5,6 @@
 /**
  * Version 1.0.0 of pebble-gbc-graphics
  * Created by Harrison Allen
- * Read more on GitHub here: [link]
  */
 
 /** Size definitions */

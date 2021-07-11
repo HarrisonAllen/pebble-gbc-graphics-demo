@@ -4,6 +4,7 @@
 #include "../pebble-gbc-graphics/pebble-gbc-graphics.h"
 
 #define NUM_MENU_ITEMS 5
+
 #define MENU_ROOT_X 9
 #define MENU_ROOT_Y 0
 #define INFO_ROOT_X 2
@@ -18,10 +19,12 @@
 #define START_MENU_ROOT_Y 1
 #define START_INFO_ROOT_X 1
 #define START_INFO_ROOT_Y 12
-#define SAVE_KEY 1
+
 #define DIALOGUE_BOUNDS GRect(0, 12, 18, 6)
 #define DIALOGUE_ROOT GPoint(1, 14)
+
 #define WILD_ODDS 10
+#define SAVE_KEY 1
 
 #define BATTLE_MENU_BOUNDS GRect(10, 12, 8, 6)
 #define BATTLE_SCROLL_SPEED 3
@@ -79,6 +82,5 @@ void Pokemon_handle_select(GBC_Graphics *graphics, bool pressed);
 void Pokemon_handle_select_click(GBC_Graphics *graphics);
 void Pokemon_handle_down(GBC_Graphics *graphics);
 void Pokemon_handle_up(GBC_Graphics *graphics);
-void Pokemon_handle_tap(GBC_Graphics *graphics);
 void Pokemon_handle_back(GBC_Graphics *graphics);
 void Pokemon_handle_focus_lost(GBC_Graphics *graphics);

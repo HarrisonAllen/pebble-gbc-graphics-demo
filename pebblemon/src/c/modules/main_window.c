@@ -7,17 +7,16 @@ static GBC_Graphics *s_graphics;
 static AppTimer *s_frame_timer;
 static Layer *s_background_layer;
 
-void print_array(uint8_t* x, uint16_t len, uint16_t breakpoint);
-
-
-static void load_demo() {
+/* Game loading handlers */
+static void load_game() {
   Pokemon_initialize(s_graphics, s_background_layer);
 }
 
-static void unload_demo() {
+static void unload_game() {
   Pokemon_deinitialize(s_graphics);
 }
 
+/* Input handlers*/
 static void select_click_handler(ClickRecognizerRef recognizer, void *context) {
   Pokemon_handle_select_click(s_graphics);
 }
@@ -30,12 +29,20 @@ static void select_release_handler(ClickRecognizerRef recognizer, void *context)
   Pokemon_handle_select(s_graphics, false);
 }
 
+static void up_click_handler(ClickRecognizerRef recognizer, void *context) {
+  Pokemon_handle_up(s_graphics);
+}
+
 static void up_press_handler(ClickRecognizerRef recognizer, void *context) {
   
 }
 
 static void up_release_handler(ClickRecognizerRef recognizer, void *context) {
   
+}
+
+static void down_click_handler(ClickRecognizerRef recognizer, void *context) {
+  Pokemon_handle_down(s_graphics);
 }
 
 static void down_press_handler(ClickRecognizerRef recognizer, void *context) {
@@ -46,20 +53,12 @@ static void down_release_handler(ClickRecognizerRef recognizer, void *context) {
   
 }
 
-static void up_click_handler(ClickRecognizerRef recognizer, void *context) {
-  Pokemon_handle_up(s_graphics);
-}
-
-static void down_click_handler(ClickRecognizerRef recognizer, void *context) {
-  Pokemon_handle_down(s_graphics);
-}
-
 static void back_click_handler(ClickRecognizerRef recognizer, void *context) {
   Pokemon_handle_back(s_graphics);
 }
 
 static void accel_tap_handler(AccelAxisType axis, int32_t direction) {
-  Pokemon_handle_tap(s_graphics);
+
 }
 
 static void click_config_provider(void *context) {
@@ -75,6 +74,10 @@ static void click_config_provider(void *context) {
 
 static void frame_timer_handle(void* context) {
   Pokemon_step(s_graphics);
+
+  // Here, I draw every frame to achieve a consistent frame rate
+  // However, it's possible to just draw when necessary for
+  // better battery life and faster frame rates
   GBC_Graphics_render(s_graphics);
 
   s_frame_timer = app_timer_register(FRAME_DURATION, frame_timer_handle, NULL);
@@ -82,6 +85,10 @@ static void frame_timer_handle(void* context) {
 
 static void will_focus_handler(bool in_focus) {
   if (!in_focus) {
+    // If a notification pops up while the timer is firing
+    // very rapidly, it will crash the entire watch :)
+    // Stopping the timer when a notification appears will
+    // prevent this while also pausing the gameplay
     app_timer_cancel(s_frame_timer);
     Pokemon_handle_focus_lost(s_graphics);
   } else {
@@ -99,7 +106,7 @@ static void window_load(Window *window) {
   layer_mark_dirty(s_background_layer);
 
   s_graphics = GBC_Graphics_ctor(window);
-  load_demo();
+  load_game();
   
   s_frame_timer = app_timer_register(FRAME_DURATION, frame_timer_handle, NULL);
 }
@@ -107,7 +114,7 @@ static void window_load(Window *window) {
 static void window_unload(Window *window) {
   GBC_Graphics_destroy(s_graphics);
 
-  unload_demo();
+  unload_game();
 
   layer_destroy(s_background_layer);
 

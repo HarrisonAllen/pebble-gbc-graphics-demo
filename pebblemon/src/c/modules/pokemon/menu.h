@@ -50,10 +50,9 @@ typedef enum {
   D_FINAL_WAIT
 } DialogueState;
 
-// menu_bounds is in tiles
 void draw_menu_rectangle(GBC_Graphics *graphics, GRect menu_bounds);
 void draw_blank_rectangle(GBC_Graphics *graphics, GRect rect_bounds);
-// pos is in tiles
+
 void draw_text_at_location(GBC_Graphics *graphics, GPoint pos, char *text);
 void draw_uint_string_at_location(GBC_Graphics *graphics, GPoint pos, uint8_t *text, uint8_t len);
 void draw_char_at_location(GBC_Graphics *graphics, GPoint pos, char char_to_write);

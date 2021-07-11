@@ -546,7 +546,7 @@ if __name__ == "__main__":
 
     # convert_sprites("resources/SourceImages/Pokemon/PokemonSprites/")
 
-    convert_tilesheet_to_2bpp("resources/SourceImages/Pokemon/UI/MenuTilesheet.png", "resources/SourceImages/Pokemon/UI/Output/MenuTilesheet~color.bin")
-    convert_tilesheet_to_2bpp("resources/SourceImages/Pokemon/UI/MenuTilesheet~bw.png", "resources/SourceImages/Pokemon/UI/Output/MenuTilesheet~bw.bin")
+    # convert_tilesheet_to_2bpp("resources/SourceImages/Pokemon/UI/MenuTilesheet.png", "resources/SourceImages/Pokemon/UI/Output/MenuTilesheet~color.bin")
+    # convert_tilesheet_to_2bpp("resources/SourceImages/Pokemon/UI/MenuTilesheet~bw.png", "resources/SourceImages/Pokemon/UI/Output/MenuTilesheet~bw.bin")
     
-    # convert_dialogue_to_bin("resources/MenuMockups/Dialogue/PokemonDialogue.txt", "resources/MenuMockups/Dialogue/Dialogue_text.bin",  "resources/MenuMockups/Dialogue/Dialogue_data.bin")
+    convert_dialogue_to_bin("resources/MenuMockups/Dialogue/PokemonDialogue.txt", "resources/MenuMockups/Dialogue/Dialogue_text.bin",  "resources/MenuMockups/Dialogue/Dialogue_data.bin")

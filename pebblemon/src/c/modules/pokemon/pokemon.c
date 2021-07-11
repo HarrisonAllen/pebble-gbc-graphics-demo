@@ -71,11 +71,13 @@ static uint8_t *s_world_map;
 static Layer *s_background_layer;
 static bool s_clear_dialogue = true;
 static uint8_t s_cur_bg_palettes[PALETTE_BANK_SIZE];
+static bool s_game_started;
 
 
 // TODO:
 // - Prep github repo
 // - Put together app store assets
+// - Fix saves
 
 static GPoint direction_to_point(PlayerDirection dir) {
     switch (dir) {
@@ -1084,7 +1086,7 @@ static void draw_menu_info(GBC_Graphics *graphics) {
       draw_textbox(graphics, GRect(INFO_ROOT_X, INFO_ROOT_Y, 14, 5), GPoint(1, 1), "Change\n\nsettings", true);
       break;
     case 3:
-      draw_textbox(graphics, GRect(INFO_ROOT_X, INFO_ROOT_Y, 14, 5), GPoint(1, 1), "Contains\n\nitem", true);
+      draw_textbox(graphics, GRect(INFO_ROOT_X, INFO_ROOT_Y, 14, 5), GPoint(1, 1), "Contains\n\nitems", true);
       break;
     case 4:
       draw_textbox(graphics, GRect(INFO_ROOT_X, INFO_ROOT_Y, 14, 5), GPoint(1, 1), "Save & quit", true);
@@ -2097,6 +2099,7 @@ void Pokemon_handle_select_click(GBC_Graphics *graphics) {
             load_game(graphics);
             s_game_state = PG_PLAY;
             s_select_pressed = false;
+            s_game_started = true;
           } break;
           case 1: // New
             s_player_x = PLAYER_ORIGIN_X;
@@ -2107,6 +2110,7 @@ void Pokemon_handle_select_click(GBC_Graphics *graphics) {
             s_to_cur_level = s_player_level == 1 ? 0 : cube(s_player_level);
             s_game_state = PG_PLAY;
             s_select_pressed = false;
+            s_game_started = true;
             break;
           case 2: // Quit
             window_stack_pop(true);
@@ -2121,6 +2125,7 @@ void Pokemon_handle_select_click(GBC_Graphics *graphics) {
             load_game(graphics);
             s_game_state = PG_PLAY;
             s_select_pressed = false;
+            s_game_started = true;
             break;
           case 1: // Quit
             window_stack_pop(true);
@@ -2327,7 +2332,9 @@ void Pokemon_handle_back(GBC_Graphics *graphics) {
 }
 
 void Pokemon_deinitialize(GBC_Graphics *graphics) {
-  save();
+  if (s_game_started) {
+    save();
+  }
   unload_dialogue();
   if (s_world_map != NULL) {
     free(s_world_map);

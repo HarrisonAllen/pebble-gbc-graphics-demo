@@ -13,7 +13,7 @@ static uint8_t s_cur_line = 0;
 static GRect s_dialogue_bounds;
 static bool s_dialogue_waits;
 static bool s_menu_tight;
-static uint8_t s_window_offset, s_window_frame;
+static uint8_t s_window_frame;
 static bool s_route_frame_animating;
 
 

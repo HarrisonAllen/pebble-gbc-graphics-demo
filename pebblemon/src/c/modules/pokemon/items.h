@@ -12,7 +12,7 @@
 #define ITEM_ID_PROTEIN 6       // Protein (Raises attack stat by 25% each battle) - Route 1, top right
 #define ITEM_ID_IRON 7          // Iron (Raises defense stat by 25% each battle) - Cave, on stairs
 
-#define ITEM_SPRITE_POKEBALL 566
+#define ITEM_SPRITE_POKEBALL 132
 
 #define HAS_ITEM(data, id) ((data) & (1 << (id))) // Use to check if an item is obtained
 #define SET_ITEM(data, id) ((data) | (1 << (id))) // Set data equal to this to set an item as obtained

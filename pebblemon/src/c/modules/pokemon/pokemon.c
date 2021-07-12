@@ -171,7 +171,7 @@ static void reset_player_palette(GBC_Graphics *graphics) {
 static void load_player_sprites(GBC_Graphics *graphics) {
   reset_player_palette(graphics);
 
-  uint16_t spritesheet_offset = pokemon_trainer_sprites[s_player_sprite] * POKEMON_TILES_PER_SPRITE;
+  uint16_t spritesheet_offset = s_player_sprite * 6 * POKEMON_TILES_PER_SPRITE;
   GBC_Graphics_load_from_tilesheet_into_vram(graphics, RESOURCE_ID_DATA_SPRITESHEET,
     spritesheet_offset, POKEMON_TILES_PER_SPRITE * POKEMON_SPRITES_PER_TRAINER, 10, TILE_BANK_SPRITES); // offset 10 for effects and items
 }
@@ -469,6 +469,7 @@ void Pokemon_initialize(GBC_Graphics *graphics, Layer *background_layer) {
   size_t res_size = resource_size(handle);
   uint16_t tiles_to_load = res_size / 16;
   GBC_Graphics_load_from_tilesheet_into_vram(graphics, RESOURCE_ID_DATA_MENU_TILESHEET, 0, tiles_to_load, 0, TILE_BANK_MENU);
+  APP_LOG(APP_LOG_LEVEL_DEBUG, "Menu tiles to load: %d", tiles_to_load);
 
   init_anim_tiles(graphics, TILE_BANK_ANIMS, TILE_OFFSET_ANIMS);
 
@@ -476,6 +477,7 @@ void Pokemon_initialize(GBC_Graphics *graphics, Layer *background_layer) {
   res_size = resource_size(handle);
   tiles_to_load = res_size / 16;
   GBC_Graphics_load_from_tilesheet_into_vram(graphics, RESOURCE_ID_DATA_WORLD_TILESHEET, 0, tiles_to_load, 0, TILE_BANK_WORLD);
+  APP_LOG(APP_LOG_LEVEL_DEBUG, "World tiles to load: %d", tiles_to_load);
 
   GBC_Graphics_stat_set_line_compare_interrupt_enabled(graphics, false);
   GBC_Graphics_lcdc_set_bg_layer_enabled(graphics, true);

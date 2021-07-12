@@ -13,13 +13,9 @@
 #define POKEMON_TRAINER_WALK_LEFT 5
 #define POKEMON_TRAINER_WALK_RIGHT 5
 
-#define POKEMON_SPRITE_PARTY 428
-#define POKEMON_SPRITE_EMOTICONS 504
-#define POKEMON_SPRITE_OVERWORLD_POKEMON 512 
-#define POKEMON_SPRITE_ITEMS 563
-#define POKEMON_SPRITE_CUT_TREE 567
-#define POKEMON_SPRITE_ITEM 566
-#define POKEMON_SPRITELET_GRASS 578 // Only one tile!
+#define POKEMON_SPRITE_CUT_TREE 133
+#define POKEMON_SPRITE_ITEM 132
+#define POKEMON_SPRITELET_GRASS 134 // Only one tile!
 
 const uint8_t pokemon_trainer_sprite_offsets[] = {
     POKEMON_TRAINER_STAND_UP,
@@ -30,31 +26,6 @@ const uint8_t pokemon_trainer_sprite_offsets[] = {
     POKEMON_TRAINER_WALK_LEFT,
     POKEMON_TRAINER_WALK_DOWN,
     POKEMON_TRAINER_WALK_RIGHT,
-};
-
-uint16_t pokemon_trainer_sprites[] = {
-    0,      // Chris
-    12,     // Kris
-    31,     // Rival
-    103,    // Prof. Elm
-    37,     // Prof. Oak
-    323,    // Nurse
-    308,    // Team Rocket Grunt (Male)
-    314,    // Team Rocket Grunt (Female)
-    79,     // Mom
-    142,    // Jasmine
-    175,    // Misty
-    160,    // Brock
-    169,    // Bruno
-    284,    // Old Man
-    290,    // Old Woman
-    353,    // Kimono Girl
-    49,     // Gary (Blue)
-    154,    // Clair
-    181,    // Lance
-    532,    // Clefairy
-    544,    // Dragon
-    516     // Surfing Pikachu
 };
 
 uint8_t pokemon_trainer_palettes[][4] = {

@@ -51,8 +51,8 @@
 #define TILE_BANK_ANIMS 1
 #define TILE_OFFSET_ANIMS 200
 
-#define ENCOUNTERS_ENABLED true
-#define DEMO_MODE false
+#define ENCOUNTERS_ENABLED false
+#define DEMO_MODE true
 #define RAND_SPRITES false
 
 typedef struct {

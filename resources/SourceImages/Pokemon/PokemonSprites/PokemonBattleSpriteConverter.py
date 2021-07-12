@@ -494,16 +494,20 @@ if __name__ == "__main__":
     
     # compress_image(base_folder + "Ribbons/BackSprites/color/038.png", base_folder + "Test.bin")
     # Then, compress the images
-    compress_images(base_folder + "Ribbons/FrontSprites/color/", base_folder + "Ribbons/FrontSprites/color/compressed/")
-    compress_images(base_folder + "Ribbons/FrontSprites/bw/", base_folder + "Ribbons/FrontSprites/bw/compressed/")
-    compress_images(base_folder + "Ribbons/BackSprites/color/", base_folder + "Ribbons/BackSprites/color/compressed/", base_folder + "Ribbons/BackSprites/color/gray/", True)
-    compress_images(base_folder + "Ribbons/BackSprites/bw/", base_folder + "Ribbons/BackSprites/bw/compressed/")
+    # compress_images(base_folder + "Ribbons/FrontSprites/color/", base_folder + "Ribbons/FrontSprites/color/compressed/")
+    # compress_images(base_folder + "Ribbons/FrontSprites/bw/", base_folder + "Ribbons/FrontSprites/bw/compressed/")
+    # compress_images(base_folder + "Ribbons/BackSprites/color/", base_folder + "Ribbons/BackSprites/color/compressed/", base_folder + "Ribbons/BackSprites/color/gray/", True)
+    # compress_images(base_folder + "Ribbons/BackSprites/bw/", base_folder + "Ribbons/BackSprites/bw/compressed/")
+    # compress_images(base_folder + "Ribbons/FrontSprites/og/", base_folder + "Ribbons/FrontSprites/og/compressed/")
+    # compress_images(base_folder + "Ribbons/BackSprites/og/", base_folder + "Ribbons/BackSprites/og/compressed/")
 
     # Finally, merge the images
-    merge_compressed_images(base_folder + "Ribbons/FrontSprites/color/compressed/", base_folder + "Output/PokemonFrontSprites~color.bin", base_folder + "Output/PokemonFrontSpriteData~color.bin")
-    merge_compressed_images(base_folder + "Ribbons/FrontSprites/bw/compressed/", base_folder + "Output/PokemonFrontSprites~bw.bin", base_folder + "Output/PokemonFrontSpriteData~bw.bin")
-    merge_compressed_images(base_folder + "Ribbons/BackSprites/color/compressed/", base_folder + "Output/PokemonBackSprites~color.bin", base_folder + "Output/PokemonBackSpriteData~color.bin")
-    merge_compressed_images(base_folder + "Ribbons/BackSprites/bw/compressed/", base_folder + "Output/PokemonBackSprites~bw.bin", base_folder + "Output/PokemonBackSpriteData~bw.bin")
+    # merge_compressed_images(base_folder + "Ribbons/FrontSprites/color/compressed/", base_folder + "Output/PokemonFrontSprites~color.bin", base_folder + "Output/PokemonFrontSpriteData~color.bin")
+    # merge_compressed_images(base_folder + "Ribbons/FrontSprites/bw/compressed/", base_folder + "Output/PokemonFrontSprites~bw.bin", base_folder + "Output/PokemonFrontSpriteData~bw.bin")
+    # merge_compressed_images(base_folder + "Ribbons/BackSprites/color/compressed/", base_folder + "Output/PokemonBackSprites~color.bin", base_folder + "Output/PokemonBackSpriteData~color.bin")
+    # merge_compressed_images(base_folder + "Ribbons/BackSprites/bw/compressed/", base_folder + "Output/PokemonBackSprites~bw.bin", base_folder + "Output/PokemonBackSpriteData~bw.bin")
+    merge_compressed_images(base_folder + "Ribbons/FrontSprites/og/compressed/", base_folder + "Output/PokemonFrontSpritesOG.bin", base_folder + "Output/PokemonFrontSpriteDataOG.bin")
+    merge_compressed_images(base_folder + "Ribbons/BackSprites/og/compressed/", base_folder + "Output/PokemonBackSpritesOG.bin", base_folder + "Output/PokemonBackSpriteDataOG.bin")
 
     # convert_file_to_gray(base_folder + "Ribbons/BackSprites/color/210.png")
     print("Done")

@@ -476,7 +476,8 @@ def convert_spritesheet_to_2bpp(sheet_filename, out_filename, img_out_filename=N
 def convert_sprites(base_folder):
     if not os.path.exists(base_folder + "Output/"):
         os.makedirs(base_folder + "Output/")
-    convert_spritesheet_to_2bpp(base_folder + "Spritesheet.png", base_folder + "Output/Spritesheet.bin", base_folder + "Output/ConvertedSpritesheet.png")
+    # convert_spritesheet_to_2bpp(base_folder + "Spritesheet.png", base_folder + "Output/Spritesheet.bin", base_folder + "Output/ConvertedSpritesheet.png")
+    convert_spritesheet_to_2bpp(base_folder + "SpritesheetReduced.png", base_folder + "Output/Spritesheet.bin", base_folder + "Output/ConvertedSpritesheet.png")
 
 MAX_LEN = 16
 
@@ -544,9 +545,9 @@ if __name__ == "__main__":
     # convert_2bpp_tilesheet_helper("resources/SourceImages/Pokemon/Map/Routes/World/", "WorldTilesheet~bw")
 
 
-    # convert_sprites("resources/SourceImages/Pokemon/PokemonSprites/")
+    convert_sprites("resources/SourceImages/Pokemon/PokemonSprites/")
 
     # convert_tilesheet_to_2bpp("resources/SourceImages/Pokemon/UI/MenuTilesheet.png", "resources/SourceImages/Pokemon/UI/Output/MenuTilesheet~color.bin")
     # convert_tilesheet_to_2bpp("resources/SourceImages/Pokemon/UI/MenuTilesheet~bw.png", "resources/SourceImages/Pokemon/UI/Output/MenuTilesheet~bw.bin")
     
-    convert_dialogue_to_bin("resources/MenuMockups/Dialogue/PokemonDialogue.txt", "resources/MenuMockups/Dialogue/Dialogue_text.bin",  "resources/MenuMockups/Dialogue/Dialogue_data.bin")
+    # convert_dialogue_to_bin("resources/MenuMockups/Dialogue/PokemonDialogue.txt", "resources/MenuMockups/Dialogue/Dialogue_text.bin",  "resources/MenuMockups/Dialogue/Dialogue_data.bin")

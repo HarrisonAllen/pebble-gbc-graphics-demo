@@ -166,7 +166,7 @@ void load_pokemon_sprite(uint32_t resource_id, uint32_t data_start, uint16_t dat
 
     if (s_debug) APP_LOG(APP_LOG_LEVEL_DEBUG, "Decompressing Bit Plane 1");
     decompress_to_buffer(width, height, buffer_1);
-    if (s_debug) APP_LOG(APP_LOG_LEVEL_DEBUG, "Total bits read: %d", BitReader_get_pointer());
+    // if (s_debug) APP_LOG(APP_LOG_LEVEL_DEBUG, "Total bits read: %d", BitReader_get_pointer());
 
     if (s_debug) APP_LOG(APP_LOG_LEVEL_DEBUG, "Decoding mode %d detected", mode);
 

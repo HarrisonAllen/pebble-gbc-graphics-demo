@@ -1,7 +1,7 @@
 {
   "name": "pebblemon",
   "author": "Harrison Allen",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "keywords": [
     "pebble-app"
   ],
@@ -25,6 +25,12 @@
     ],
     "resources": {
       "media": [
+        {
+          "menuIcon": true,
+          "type": "png",
+          "name": "IMAGE_MENU_ICON",
+          "file": "menu_icon.png"
+        },
         {
           "type": "raw",
           "name": "DATA_ANIMATION_TILESHEET",

@@ -55,6 +55,7 @@ static uint16_t s_target_x, s_target_y;
 static uint8_t s_warp_route;
 static uint16_t s_warp_x, s_warp_y;
 static bool s_up_press_queued, s_down_press_queued;
+static uint16_t s_steps_since_last_encounter;
 
 // Options
 static bool s_save_file_exists;
@@ -739,6 +740,7 @@ static void play(GBC_Graphics *graphics) {
             GBC_Graphics_oam_hide_sprite(graphics, 0);
             GBC_Graphics_oam_hide_sprite(graphics, 1);
           #endif
+            s_steps_since_last_encounter++;
           }
         }
       }
@@ -802,7 +804,7 @@ static void play(GBC_Graphics *graphics) {
         }
       }
       if (s_walk_frame == 7 && s_can_move && (s_route_num == 0 || s_route_num == 1 || get_block_type(s_world_map, s_target_x+8, s_target_y) == GRASS)) {
-        if (ENCOUNTERS_ENABLED && rand() % WILD_ODDS == 0) {
+        if (ENCOUNTERS_ENABLED && (rand() % WILD_ODDS == 0) && (s_steps_since_last_encounter >= STEPS_BETWEEN_ENCOUNTERS)) {
           load_screen(graphics);
           s_game_state = PG_BATTLE;
           s_battle_state = PB_FLASH;
@@ -810,6 +812,7 @@ static void play(GBC_Graphics *graphics) {
           if (s_move_mode_toggle) {
             s_move_toggle = false;
           }
+          s_steps_since_last_encounter = 0;
         }
       }
       switch(s_walk_frame) {
@@ -866,7 +869,7 @@ static void play(GBC_Graphics *graphics) {
         }
       }
       if (s_walk_frame == 3 && s_can_move && (s_route_num == 0 || s_route_num == 1 || get_block_type(s_world_map, s_target_x+8, s_target_y) == GRASS)) {
-        if (ENCOUNTERS_ENABLED && rand() % WILD_ODDS == 0) {
+        if (ENCOUNTERS_ENABLED && (rand() % WILD_ODDS == 0) && (s_steps_since_last_encounter >= STEPS_BETWEEN_ENCOUNTERS)) {
           load_screen(graphics);
           s_game_state = PG_BATTLE;
           s_battle_state = PB_FLASH;
@@ -874,6 +877,7 @@ static void play(GBC_Graphics *graphics) {
           if (s_move_mode_toggle) {
             s_move_toggle = false;
           }
+          s_steps_since_last_encounter = 0;
         }
       }
       switch(s_walk_frame) {
@@ -905,11 +909,15 @@ static void play(GBC_Graphics *graphics) {
         render_items(graphics);
       }
       if (get_block_type(s_world_map, s_target_x+8, s_target_y) == GRASS && s_walk_frame == 15) { // grass
-        if (s_can_move && ENCOUNTERS_ENABLED && (rand() % WILD_ODDS == 0)) {
+        if (s_can_move && ENCOUNTERS_ENABLED && (rand() % WILD_ODDS == 0) && (s_steps_since_last_encounter >= STEPS_BETWEEN_ENCOUNTERS)) {
           load_screen(graphics);
           s_game_state = PG_BATTLE;
           s_battle_state = PB_FLASH;
           s_battle_frame = 0;
+          if (s_move_mode_toggle) {
+            s_move_toggle = false;
+          }
+          s_steps_since_last_encounter = 0;
         }
       }
       switch(s_walk_frame) {

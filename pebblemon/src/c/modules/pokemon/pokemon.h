@@ -23,7 +23,8 @@
 #define DIALOGUE_BOUNDS GRect(0, 12, 18, 6)
 #define DIALOGUE_ROOT GPoint(1, 14)
 
-#define WILD_ODDS 10
+#define WILD_ODDS 12
+#define STEPS_BETWEEN_ENCOUNTERS 5
 #define SAVE_KEY 1
 
 #define BATTLE_MENU_BOUNDS GRect(10, 12, 8, 6)
@@ -51,8 +52,8 @@
 #define TILE_BANK_ANIMS 1
 #define TILE_OFFSET_ANIMS 200
 
-#define ENCOUNTERS_ENABLED false
-#define DEMO_MODE true
+#define ENCOUNTERS_ENABLED true
+#define DEMO_MODE false
 #define RAND_SPRITES false
 
 typedef struct {

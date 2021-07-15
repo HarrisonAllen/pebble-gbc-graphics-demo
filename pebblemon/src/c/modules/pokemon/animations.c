@@ -46,7 +46,7 @@ uint8_t cave_water_palettes[] = {
 #endif
 };
 
-uint8_t main_water_palettes[] = {
+uint8_t day_water_palettes[] = {
 #if defined(PBL_COLOR)
     0b11111111, 0b11101011, 0b11010111, 0b11000000, 
     0b11101011, 0b11101011, 0b11010111, 0b11000000, 
@@ -60,9 +60,32 @@ uint8_t main_water_palettes[] = {
 #endif
 };
 
-uint8_t *water_palettes[] = { 
-    main_water_palettes,
-    cave_water_palettes,
+uint8_t morning_water_palettes[] = {
+#if defined(PBL_COLOR)
+    0b11111110, 0b11101011, 0b11010111, 0b11000000, 
+    0b11101011, 0b11101011, 0b11010111, 0b11000000, 
+    0b11010111, 0b11101011, 0b11010111, 0b11000000, 
+    0b11101011, 0b11101011, 0b11010111, 0b11000000, 
+#else
+    0, 0, 1, 1,
+    0, 0, 1, 1,
+    0, 0, 1, 1,
+    0, 0, 1, 1,
+#endif
+};
+
+uint8_t night_water_palettes[] = {
+#if defined(PBL_COLOR)
+    0b11111111, 0b11101010, 0b11010110, 0b11000000,
+    0b11101010, 0b11101010, 0b11010110, 0b11000000,
+    0b11010110, 0b11010111, 0b11010110, 0b11000000,
+    0b11101010, 0b11101010, 0b11010110, 0b11000000,
+#else
+    0, 0, 1, 1,
+    0, 0, 1, 1,
+    0, 0, 1, 1,
+    0, 0, 1, 1,
+#endif
 };
 
 void init_anim_tiles(GBC_Graphics *graphics, uint8_t anim_bank, uint8_t anim_offset) {
@@ -81,9 +104,20 @@ void animate_tiles(GBC_Graphics *graphics, uint8_t tile_bank, uint8_t route) {
                                      tile_bank, anim_tile_offsets[i], 1, false);
     }
     if (route == 0) { // Cave
-        GBC_Graphics_set_bg_palette_array(graphics, WATER_PALETTE, &water_palettes[1][((s_anim_frame % 16) / 4) * 4]);
+        GBC_Graphics_set_bg_palette_array(graphics, WATER_PALETTE, &cave_water_palettes[((s_anim_frame % 16) / 4) * 4]);
     } else {
-        GBC_Graphics_set_bg_palette_array(graphics, WATER_PALETTE, &water_palettes[0][((s_anim_frame % 8) / 2) * 4]);
+        time_t unadjusted_time = time(NULL);
+        struct tm *cur_time = localtime(&unadjusted_time);
+        uint8_t hour = cur_time->tm_hour;
+        uint8_t *palette;
+        if (hour >= 4 && hour < 10) {
+            palette = morning_water_palettes;
+        } else if (hour >= 10 && hour < 18) {
+            palette = day_water_palettes;
+        } else {
+            palette = night_water_palettes;
+        }
+        GBC_Graphics_set_bg_palette_array(graphics, WATER_PALETTE, &palette[((s_anim_frame % 8) / 2) * 4]);
     }
     s_anim_frame = (s_anim_frame + 1) % MAX_ANIM_FRAMES;
 }

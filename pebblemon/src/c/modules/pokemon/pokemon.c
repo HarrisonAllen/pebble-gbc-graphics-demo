@@ -1367,6 +1367,9 @@ static void battle(GBC_Graphics *graphics) {
       }
       break;
     case PB_LOAD:
+    #if defined(PBL_COLOR)
+      GBC_Graphics_set_bg_palette(graphics, 0, 0b11111111, 0b11101010, 0b11010101, 0b11000000);
+    #endif
       for (uint8_t i = 0; i < 40; i++) {
         GBC_Graphics_oam_hide_sprite(graphics, i);
       }
@@ -1856,9 +1859,6 @@ void Pokemon_step(GBC_Graphics *graphics) {
       }
       break;
     case PG_BATTLE:
-    #if defined(PBL_COLOR)
-      GBC_Graphics_set_bg_palette(graphics, 0, 0b11111111, 0b11101010, 0b11010101, 0b11000000);
-    #endif
       battle(graphics);
       break;
     case PG_TREE:

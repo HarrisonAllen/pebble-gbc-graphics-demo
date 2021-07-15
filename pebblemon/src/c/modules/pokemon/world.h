@@ -6,6 +6,7 @@
 #include "routes/NationalPark.h"
 #include "routes/Route1.h"
 #include "routes/Route2.h"
+#include "overworld_palettes.h"
 
 uint8_t route_dims[] = {
 //  width, height
@@ -68,6 +69,7 @@ uint8_t *block_types[] = {
 	route_2_block_types,
 };
 
+
 uint8_t *tile_palettes[] = {
 	cave_tile_palettes,
 	forest_tile_palettes,
@@ -76,12 +78,28 @@ uint8_t *tile_palettes[] = {
 	route_2_tile_palettes,
 };
 
-uint8_t *palettes[] = {
+uint8_t *overworld_morning_palettes[] = {
 	cave_palettes,
-	forest_palettes,
-	national_park_palettes,
-	route_1_palettes,
-	route_2_palettes,
+	morning_palettes,
+	morning_palettes,
+	morning_palettes,
+	morning_palettes,
+};
+
+uint8_t *overworld_day_palettes[] = {
+	cave_palettes,
+	day_palettes,
+	day_palettes,
+	day_palettes,
+	day_palettes,
+};
+
+uint8_t *overworld_night_palettes[] = {
+	cave_palettes,
+	night_palettes,
+	night_palettes,
+	night_palettes,
+	night_palettes,
 };
 
 uint8_t replacement_blocks[] = { // to replace the CUT trees

@@ -111,14 +111,29 @@ static void draw_black_rectangle(GBC_Graphics *graphics, GRect rect_bounds, bool
   }
 }
 
-static void load_screen(GBC_Graphics *graphics) {
-  for (uint8_t i = 0; i < 8; i++) {
-    GBC_Graphics_set_bg_palette_array(graphics, i, &palettes[s_route_num][i*PALETTE_SIZE]);
+static void set_bg_palettes(GBC_Graphics *graphics) {
+  time_t unadjusted_time = time(NULL);
+  struct tm *cur_time = localtime(&unadjusted_time);
+  uint8_t hour = cur_time->tm_hour;
+  uint8_t *palette;
+  if (hour >= 4 && hour < 10) {
+    palette = overworld_morning_palettes[s_route_num];
+  } else if (hour >= 10 && hour < 18) {
+    palette = overworld_day_palettes[s_route_num];
+  } else {
+    palette = overworld_night_palettes[s_route_num];
   }
-#if defined(PBL_COLOR)
-  GBC_Graphics_set_sprite_palette_array(graphics, 4, &palettes[s_route_num][2*PALETTE_SIZE]);
-#endif
+  for (uint8_t i = 0; i < 8; i++) {
+    GBC_Graphics_set_bg_palette_array(graphics, i, &palette[i*PALETTE_SIZE]);
+  }
+}
+
+static void load_screen(GBC_Graphics *graphics) {
+  set_bg_palettes(graphics);
   GBC_Graphics_copy_all_bg_palettes(graphics, s_cur_bg_palettes);
+#if defined(PBL_COLOR)
+  GBC_Graphics_set_sprite_palette_array(graphics, 4, &s_cur_bg_palettes[2*PALETTE_SIZE]);
+#endif
   GBC_Graphics_bg_set_scroll_pos(graphics, 0, 0);
   draw_black_rectangle(graphics, GRect(0, 0, 32, 32), false);
   uint8_t bg_root_x = GBC_Graphics_bg_get_scroll_x(graphics) >> 3;
@@ -462,15 +477,12 @@ void Pokemon_initialize(GBC_Graphics *graphics, Layer *background_layer) {
       GBC_Graphics_oam_hide_sprite(graphics, i);
   }
 
-  for (uint8_t i = 0; i < 8; i++) {
-    GBC_Graphics_set_bg_palette_array(graphics, i, &palettes[s_route_num][i*PALETTE_SIZE]);
-  }
+  set_bg_palettes(graphics);
 
   ResHandle handle = resource_get_handle(RESOURCE_ID_DATA_MENU_TILESHEET);
   size_t res_size = resource_size(handle);
   uint16_t tiles_to_load = res_size / 16;
   GBC_Graphics_load_from_tilesheet_into_vram(graphics, RESOURCE_ID_DATA_MENU_TILESHEET, 0, tiles_to_load, 0, TILE_BANK_MENU);
-  APP_LOG(APP_LOG_LEVEL_DEBUG, "Menu tiles to load: %d", tiles_to_load);
 
   init_anim_tiles(graphics, TILE_BANK_ANIMS, TILE_OFFSET_ANIMS);
 
@@ -478,7 +490,6 @@ void Pokemon_initialize(GBC_Graphics *graphics, Layer *background_layer) {
   res_size = resource_size(handle);
   tiles_to_load = res_size / 16;
   GBC_Graphics_load_from_tilesheet_into_vram(graphics, RESOURCE_ID_DATA_WORLD_TILESHEET, 0, tiles_to_load, 0, TILE_BANK_WORLD);
-  APP_LOG(APP_LOG_LEVEL_DEBUG, "World tiles to load: %d", tiles_to_load);
 
   GBC_Graphics_stat_set_line_compare_interrupt_enabled(graphics, false);
   GBC_Graphics_lcdc_set_bg_layer_enabled(graphics, true);
@@ -1027,6 +1038,7 @@ static void play(GBC_Graphics *graphics) {
     case P_WARP:
       if (s_walk_frame < 5) {
         if (s_walk_frame == 0) {
+          GBC_Graphics_window_set_offset_pos(graphics, 0, 144);
           GBC_Graphics_copy_all_bg_palettes(graphics, s_cur_bg_palettes);
         }
       #if defined(PBL_COLOR)
@@ -1049,9 +1061,7 @@ static void play(GBC_Graphics *graphics) {
         GBC_Graphics_copy_all_bg_palettes(graphics, s_cur_bg_palettes);
       #if defined(PBL_BW)
         set_bg_palettes_to_color(graphics, 1);
-        for (uint8_t i = 0; i < 8; i++) {
-          GBC_Graphics_set_bg_palette_array(graphics, i, &palettes[s_route_num][i*PALETTE_SIZE]);
-        }
+        set_bg_palettes(graphics);
       #else 
         lerp_bg_palettes_to_color(graphics, 0b11111111, 4);
         lerp_player_palette_to_color(graphics, 0b11111111, 4);
@@ -1245,9 +1255,7 @@ static void battle(GBC_Graphics *graphics) {
       }
     #else
       if (frame_mod == 0 || frame_mod == 4) {
-        for (uint8_t i = 0; i < 8; i++) {
-          GBC_Graphics_set_bg_palette_array(graphics, i, &palettes[s_route_num][i*PALETTE_SIZE]);
-        }
+        set_bg_palettes(graphics);
       } else if (frame_mod == 2) {
         set_bg_palettes_to_color(graphics, 0);
       } else if (frame_mod == 6) {
@@ -1256,9 +1264,7 @@ static void battle(GBC_Graphics *graphics) {
     #endif
       s_battle_frame++;
       if (s_battle_frame == 24) {
-        for (uint8_t i = 0; i < 8; i++) {
-          GBC_Graphics_set_bg_palette_array(graphics, i, &palettes[s_route_num][i*PALETTE_SIZE]);
-        }
+        set_bg_palettes(graphics);
         switch (s_route_num) {
           case 0: // Cave
             s_battle_state = PB_ANIM_BOX;
@@ -1850,6 +1856,9 @@ void Pokemon_step(GBC_Graphics *graphics) {
       }
       break;
     case PG_BATTLE:
+    #if defined(PBL_COLOR)
+      GBC_Graphics_set_bg_palette(graphics, 0, 0b11111111, 0b11101010, 0b11010101, 0b11000000);
+    #endif
       battle(graphics);
       break;
     case PG_TREE:

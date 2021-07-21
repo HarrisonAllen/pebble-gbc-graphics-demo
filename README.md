@@ -4,9 +4,8 @@ This is a demo project utilizing the pebble-gbc-graphics package, I've dumped al
 
 ## Core Pebble Files
 
-* [Pebble GBC Graphics Library](https://github.com/HarrisonAllen/pebble-gbc-graphics-demo/tree/master/pebblemon/src/c/modules/pebble-gbc-graphics)
-  * The library I wrote and used to display the graphics on the Pebble
-  * Drop this into your project and try it out!
+* [Pebble GBC Graphics Library](https://github.com/HarrisonAllen/pebble-gbc-graphics)
+  * A more updated version of the library I wrote and used to display the graphics on the Pebble 
 
 * [Pebblemon watchapp](https://github.com/HarrisonAllen/pebble-gbc-graphics-demo/tree/master/pebblemon)
   * This is a project used to demonstrate the graphics library, while also being a full game

@@ -6,6 +6,7 @@ This is a demo project utilizing the pebble-gbc-graphics package, I've dumped al
 
 * [Pebble GBC Graphics Library](https://github.com/HarrisonAllen/pebble-gbc-graphics)
   * A more updated version of the library I wrote and used to display the graphics on the Pebble 
+  * Check this link out for a tutorial on how to use the library!
 
 * [Pebblemon watchapp](https://github.com/HarrisonAllen/pebble-gbc-graphics-demo/tree/master/pebblemon)
   * This is a project used to demonstrate the graphics library, while also being a full game

@@ -1,0 +1,104 @@
+{
+  "name": "pebblemon-lite",
+  "author": "Harrison Allen",
+  "version": "1.0.0",
+  "keywords": [
+    "pebble-app"
+  ],
+  "private": true,
+  "dependencies": {},
+  "pebble": {
+    "displayName": "Pebblemon Lite",
+    "uuid": "327c6d9f-2fb5-4e03-9eb0-87ce91eabd64",
+    "sdkVersion": "3",
+    "enableMultiJS": true,
+    "targetPlatforms": [
+      "aplite"
+    ],
+    "watchapp": {
+      "watchface": false
+    },
+    "messageKeys": [
+      "dummy"
+    ],
+    "resources": {
+      "media": [
+        {
+          "menuIcon": true,
+          "type": "png",
+          "name": "IMAGE_MENU_ICON",
+          "file": "menu_icon.png"
+        },
+        {
+          "type": "raw",
+          "name": "DATA_ANIMATION_TILESHEET",
+          "file": "data/AnimationTilesheet.bin"
+        },
+        {
+          "type": "raw",
+          "name": "DATA_WORLD_TILESHEET",
+          "file": "data/WorldTilesheet.bin"
+        },
+        {
+          "type": "raw",
+          "name": "DATA_LITE",
+          "file": "data/Lite.bin"
+        },
+        {
+          "type": "raw",
+          "name": "DATA_SPRITESHEET",
+          "file": "data/Spritesheet.bin"
+        },
+        {
+          "type": "raw",
+          "name": "DATA_MENU_TILESHEET",
+          "file": "data/MenuTilesheet.bin"
+        },
+        {
+          "type": "raw",
+          "name": "DATA_DIALOGUE_DATA",
+          "file": "data/Dialogue_data.bin"
+        },
+        {
+          "type": "raw",
+          "name": "DATA_DIALOGUE_TEXT",
+          "file": "data/Dialogue_text.bin"
+        },
+        {
+          "type": "raw",
+          "name": "DATA_POKEMON_FRONT_SPRITES",
+          "file": "data/PokemonFrontSprites.bin"
+        },
+        {
+          "type": "raw",
+          "name": "DATA_POKEMON_FRONT_SPRITE_DATA",
+          "file": "data/PokemonFrontSpriteData.bin"
+        },
+        {
+          "type": "raw",
+          "name": "DATA_POKEMON_BACK_SPRITES",
+          "file": "data/PokemonBackSprites.bin"
+        },
+        {
+          "type": "raw",
+          "name": "DATA_POKEMON_BACK_SPRITE_DATA",
+          "file": "data/PokemonBackSpriteData.bin"
+        },
+        {
+          "type": "raw",
+          "name": "DATA_POKEMON_PALETTES",
+          "file": "data/PokemonPalettes.bin",
+          "targetPlatforms": [
+            "basalt",
+            "chalk"
+          ]
+        },
+        {
+          "type": "raw",
+          "name": "DATA_POKEMON_NAMES",
+          "file": "data/PokemonNames.bin"
+        }
+      ]
+    }
+  }
+}

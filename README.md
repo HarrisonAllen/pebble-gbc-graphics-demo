@@ -11,6 +11,9 @@ This is a demo project utilizing the pebble-gbc-graphics package, I've dumped al
 * [Pebblemon watchapp](https://github.com/HarrisonAllen/pebble-gbc-graphics-demo/tree/master/pebblemon)
   * This is a project used to demonstrate the graphics library, while also being a full game
 
+* [Pebblemon Lite watchapp](https://github.com/HarrisonAllen/pebble-gbc-graphics-demo/tree/master/pebblemon-lite)
+  * A highly stripped down version of Pebblemon that's small enough to fit on a Pebble Classic/Steel
+
 * [Pebblemon .pbw file](https://github.com/HarrisonAllen/pebble-gbc-graphics-demo/blob/master/pebblemon/pebblemon.pbw?raw=true)
   * Need to sideload it? Download here
 

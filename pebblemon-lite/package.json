@@ -31,11 +31,6 @@
         },
         {
           "type": "raw",
-          "name": "DATA_ANIMATION_TILESHEET",
-          "file": "data/AnimationTilesheet.bin"
-        },
-        {
-          "type": "raw",
           "name": "DATA_WORLD_TILESHEET",
           "file": "data/WorldTilesheet.bin"
         },
@@ -53,16 +48,6 @@
           "type": "raw",
           "name": "DATA_MENU_TILESHEET",
           "file": "data/MenuTilesheet.bin"
-        },
-        {
-          "type": "raw",
-          "name": "DATA_DIALOGUE_DATA",
-          "file": "data/Dialogue_data.bin"
-        },
-        {
-          "type": "raw",
-          "name": "DATA_DIALOGUE_TEXT",
-          "file": "data/Dialogue_text.bin"
         },
         {
           "type": "raw",

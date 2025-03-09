@@ -55,7 +55,7 @@
 #define DEMO_MODE false
 #define RAND_SPRITES false
 
-#define NUM_POKEMON 151
+#define NUM_POKEMON 251
 
 typedef struct {
     uint8_t player_level;

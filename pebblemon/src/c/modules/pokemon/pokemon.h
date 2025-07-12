@@ -14,7 +14,7 @@
 #define STATS_ROOT_X 0
 #define STATS_ROOT_Y 0
 #define OPTION_ROOT_X 0
-#define OPTION_ROOT_Y 2
+#define OPTION_ROOT_Y 1
 #define START_MENU_ROOT_X 0
 #define START_MENU_ROOT_Y 1
 #define START_INFO_ROOT_X 1
@@ -25,7 +25,8 @@
 
 #define WILD_ODDS 12
 #define STEPS_BETWEEN_ENCOUNTERS 5
-#define SAVE_KEY 1
+#define OLD_SAVE_KEY 1
+#define SAVE_KEY 2
 
 #define BATTLE_MENU_BOUNDS GRect(10, 12, 8, 6)
 #define BATTLE_SCROLL_SPEED 3
@@ -64,7 +65,8 @@ typedef struct {
     uint8_t player_direction;
     bool move_mode_toggle;
     bool turn_mode_tilt;
-    bool backlight_on;
+    bool auto_battle;
+    bool vibrate_enabled;
     uint8_t text_speed;
     uint8_t player_level;
     int player_exp;
@@ -75,6 +77,26 @@ typedef struct {
     uint16_t runs;
     uint8_t player_items;
 } PokemonSaveData;
+
+typedef struct {
+    uint8_t route_num;
+    uint16_t player_x;
+    uint16_t player_y;
+    uint8_t player_sprite;
+    uint8_t player_direction;
+    bool move_mode_toggle;
+    bool turn_mode_tilt;
+    bool backlight_on;
+    uint8_t text_speed;
+    uint8_t player_level;
+    int player_exp;
+    time_t last_save;
+    uint16_t battles;
+    uint16_t wins;
+    uint16_t losses;
+    uint16_t runs;
+    uint8_t player_items;
+} OldPokemonSaveData;
 
 void Pokemon_initialize(GBC_Graphics *graphics, Layer *background_layer);
 void Pokemon_deinitialize(GBC_Graphics *graphics);

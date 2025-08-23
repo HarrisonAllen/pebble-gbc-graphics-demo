@@ -3,7 +3,7 @@
 #include <pebble.h>  ///> Pebble SDK symbols
 
 /**
- * Version 1.0.0 of pebble-gbc-graphics
+ * Version 1.0.0-e of pebble-gbc-graphics (adds emery dimensions)
  * Created by Harrison Allen
  */
 
@@ -92,10 +92,15 @@
 
 /** Predefined Screen boundaries for convenience*/
 #if defined(PBL_ROUND)
-    #define SCREEN_BOUNDS_FULL GRect(0, 0, 180, 180)    ///> Fullscreen to get the most pixels
+    #define SCREEN_BOUNDS_FULL GRect(0, 0, 180, 180)     ///> Fullscreen to get the most pixels
     #define SCREEN_BOUNDS_LARGE GRect(0, 18, 180, 144)   ///> Makes it even to tiles
     #define SCREEN_BOUNDS_SQUARE GRect(18, 18, 144, 144) ///> Square to get 60+ fps
     #define SCREEN_BOUNDS_SMALL GRect(26, 26, 128, 128)  ///> Small square
+#elif defined(PBL_PLATFORM_EMERY)
+    #define SCREEN_BOUNDS_FULL GRect(0, 2, 200, 224)     ///> Fullscreen to get the most pixels
+    #define SCREEN_BOUNDS_LARGE GRect(4, 2, 192, 224)    ///> Gets rid of the extra tile column on the x axis
+    #define SCREEN_BOUNDS_SQUARE GRect(28, 42, 144, 144) ///> Square to get more fps
+    #define SCREN_BOUNDS_SMALL GRect(36, 48, 128, 128)   ///> Small square
 #else
     #define SCREEN_BOUNDS_FULL GRect(0, 0, 144, 168)    ///> Fullscreen to get the most pixels
     #define SCREEN_BOUNDS_LARGE GRect(0, 4, 144, 160)   ///> Gets rid of the extra tile row on the y axis

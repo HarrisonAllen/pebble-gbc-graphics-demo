@@ -47,7 +47,7 @@ static bool s_eaten_berry;
 
 // Frame counters
 static uint8_t s_walk_frame, s_poll_frame, s_battle_frame, s_anim_frame, 
-               s_step_frame, s_tree_frame, s_demo_frame;
+               s_tree_frame, s_demo_frame;
 
 // Movement
 static bool s_flip_walk, s_can_move;
@@ -1846,10 +1846,6 @@ static void save() {
 }
 
 void Pokemon_step(GBC_Graphics *graphics) {
-  s_step_frame = (s_step_frame + 1) % FRAME_SKIP;
-  if (s_step_frame != 0) {
-      return;
-  }
   if (s_player_mode == P_STAND && s_game_state == PG_PAUSE_QUEUED) {
     set_cursor_pos(0);
     draw_pause_menu(graphics);

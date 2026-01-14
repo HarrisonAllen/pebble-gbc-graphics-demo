@@ -73,6 +73,10 @@ static void click_config_provider(void *context) {
 }
 
 static void frame_timer_handle(void* context) {
+  // requeue timer at start, not sure if it's too fast for the logic and will break
+  s_frame_timer = app_timer_register(FRAME_DURATION, frame_timer_handle, NULL); 
+
+  // main game loop
   Pokemon_step(s_graphics);
 
   // Here, I draw every frame to achieve a consistent frame rate
@@ -80,7 +84,6 @@ static void frame_timer_handle(void* context) {
   // better battery life and faster frame rates
   GBC_Graphics_render(s_graphics);
 
-  s_frame_timer = app_timer_register(FRAME_DURATION, frame_timer_handle, NULL);
 }
 
 static void will_focus_handler(bool in_focus) {

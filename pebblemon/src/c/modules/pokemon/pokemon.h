@@ -38,9 +38,6 @@
 #define SAVE_MENU_BOUNDS GRect(0, 7, 6, 5)
 #define CONFIRM_BOUNDS GRect(12, 7, 6, 5)
 
-
-#define FRAME_SKIP 1
-
 #define PLAYER_ORIGIN_X 16*51
 #define PLAYER_ORIGIN_Y 16*13
 

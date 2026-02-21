@@ -1,7 +1,7 @@
 {
   "name": "pebblemon",
   "author": "Harrison Allen",
-  "version": "1.7.0",
+  "version": "1.8.0",
   "keywords": [
     "pebble-app"
   ],
@@ -17,7 +17,8 @@
       "chalk",
       "diorite",
       "emery",
-      "flint"
+      "flint",
+      "gabbro"
     ],
     "watchapp": {
       "watchface": false
@@ -115,7 +116,8 @@
           "targetPlatforms": [
             "basalt",
             "chalk",
-            "emery"
+            "emery",
+            "gabbro"
           ]
         },
         {

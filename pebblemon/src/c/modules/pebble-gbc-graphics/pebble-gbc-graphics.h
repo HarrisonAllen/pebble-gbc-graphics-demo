@@ -91,16 +91,21 @@
 #define POINT_TO_OFFSET(x, y) ((x) & (MAP_WIDTH - 1)) + ((y) & (MAP_HEIGHT - 1)) * MAP_WIDTH ///> Converts an x, y point on a bg/window map to the tile/attrmap offset
 
 /** Predefined Screen boundaries for convenience*/
-#if defined(PBL_ROUND)
-    #define SCREEN_BOUNDS_FULL GRect(0, 0, 180, 180)     ///> Fullscreen to get the most pixels
-    #define SCREEN_BOUNDS_LARGE GRect(0, 18, 180, 144)   ///> Makes it even to tiles
-    #define SCREEN_BOUNDS_SQUARE GRect(18, 18, 144, 144) ///> Square to get 60+ fps
-    #define SCREEN_BOUNDS_SMALL GRect(26, 26, 128, 128)  ///> Small square
-#elif defined(PBL_PLATFORM_EMERY)
+#if defined(PBL_PLATFORM_EMERY)
     #define SCREEN_BOUNDS_FULL GRect(0, 2, 200, 224)     ///> Fullscreen to get the most pixels
     #define SCREEN_BOUNDS_LARGE GRect(4, 2, 192, 224)    ///> Gets rid of the extra tile column on the x axis
     #define SCREEN_BOUNDS_SQUARE GRect(28, 42, 144, 144) ///> Square to get more fps
     #define SCREN_BOUNDS_SMALL GRect(36, 48, 128, 128)   ///> Small square
+#elif defined(PBL_PLATFORM_GABBRO)
+    #define SCREEN_BOUNDS_FULL GRect(0, 0, 260, 260)     ///> Fullscreen to get the most pixels
+    #define SCREEN_BOUNDS_LARGE GRect(2, 2, 256, 256)   ///> Makes it even to tiles
+    #define SCREEN_BOUNDS_SQUARE GRect(58, 58, 144, 144) ///> Square to get 60+ fps
+    #define SCREEN_BOUNDS_SMALL GRect(66, 66, 128, 128)  ///> Small square
+#elif defined(PBL_ROUND)
+    #define SCREEN_BOUNDS_FULL GRect(0, 0, 180, 180)     ///> Fullscreen to get the most pixels
+    #define SCREEN_BOUNDS_LARGE GRect(0, 18, 180, 144)   ///> Makes it even to tiles
+    #define SCREEN_BOUNDS_SQUARE GRect(18, 18, 144, 144) ///> Square to get 60+ fps
+    #define SCREEN_BOUNDS_SMALL GRect(26, 26, 128, 128)  ///> Small square
 #else
     #define SCREEN_BOUNDS_FULL GRect(0, 0, 144, 168)    ///> Fullscreen to get the most pixels
     #define SCREEN_BOUNDS_LARGE GRect(0, 4, 144, 160)   ///> Gets rid of the extra tile row on the y axis

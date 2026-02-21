@@ -595,7 +595,7 @@ static void load_blocks_in_direction(GBC_Graphics *graphics, PlayerDirection dir
 static int check_for_item(uint16_t target_x, uint16_t target_y) {
   uint16_t block_x = target_x >> 4;
   uint16_t block_y = target_y >> 4;
-  for (uint16_t i = 0; i < sizeof(items) >> 2; i++) {
+  for (uint16_t i = 0; i < NUM_ITEMS; i++) {
     if (s_route_num == items[i][0] && block_x == items[i][1] && block_y == items[i][2]) {
       return i;
     }
@@ -937,6 +937,7 @@ static void play(GBC_Graphics *graphics) {
             GBC_Graphics_oam_set_sprite_priority(graphics, 5, true);
           }
         #endif
+          __attribute__ ((fallthrough));
         case 0:
           set_player_sprites(graphics, false,  s_player_direction == D_RIGHT);
           break;
@@ -984,6 +985,7 @@ static void play(GBC_Graphics *graphics) {
         case 0:
           GBC_Graphics_oam_set_sprite_pos(graphics, 6, s_player_sprite_x, s_player_sprite_y + 8);
           GBC_Graphics_oam_set_sprite_pos(graphics, 7, s_player_sprite_x + 8, s_player_sprite_y + 8);
+          __attribute__ ((fallthrough));
         case 6:
         case 8:
         case 14:
@@ -1930,6 +1932,7 @@ void Pokemon_step(GBC_Graphics *graphics) {
               break;
             case 8:
               s_game_state = PG_PLAY;
+              __attribute__ ((fallthrough));
             case 4:
             case 6:
               GBC_Graphics_oam_hide_sprite(graphics, 24 + 0);
@@ -2188,6 +2191,7 @@ void Pokemon_handle_select_click(GBC_Graphics *graphics) {
             break;
         }
       }
+      break;
     case PG_DIALOGUE:
       handle_input_dialogue(graphics);
       break;

@@ -18,7 +18,7 @@
 #define SET_ITEM(data, id) ((data) | (1 << (id))) // Set data equal to this to set an item as obtained
 
 // route, block_x, block_y, item_id, hidden
-const int16_t items[][6] = {
+const int16_t items[NUM_ITEMS][6] = {
     {1, 19, 18, ITEM_ID_RUNNING_SHOES, false},
     {1, 29, 26, ITEM_ID_CUT, false},
     {2, 37, 15, ITEM_ID_LUCKY_EGG, false},

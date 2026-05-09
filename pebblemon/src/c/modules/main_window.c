@@ -104,8 +104,6 @@ static void window_load(Window *window) {
   GRect bounds = layer_get_bounds(window_layer);
   window_set_background_color(window, GColorBlack);
   
-  s_background_layer = layer_create(bounds);
-  
   s_background_layer = layer_create_with_data(
       bounds, 
       sizeof(s_graphics)

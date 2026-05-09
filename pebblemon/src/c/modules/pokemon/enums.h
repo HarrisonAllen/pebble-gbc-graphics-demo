@@ -66,3 +66,14 @@ typedef enum {
   PT_REPLACE,
   PT_ANIMATE
 } PokemonTreeState;
+
+typedef enum {
+  TOUCH_NONE,
+  TOUCH_A,
+  TOUCH_B,
+  TOUCH_START,
+  TOUCH_UP,
+  TOUCH_LEFT,
+  TOUCH_DOWN,
+  TOUCH_RIGHT
+} TouchButtonType;

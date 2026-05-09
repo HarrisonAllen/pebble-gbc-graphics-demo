@@ -1,11 +1,32 @@
+#include <math.h>
 #include "main_window.h"
 #include "pebble-gbc-graphics/pebble-gbc-graphics.h"
 #include "pokemon/pokemon.h"
+#include "pokemon/enums.h"
 
 static Window *s_window;
 static GBC_Graphics *s_graphics;
 static AppTimer *s_frame_timer;
 static Layer *s_background_layer;
+#if defined(PBL_PLATFORM_EMERY)
+#define DPAD_W 111 // width
+#define DPAD_H 111 // height
+#define DPAD_X 0
+#define DPAD_Y 130
+#define DPAD_M_X (DPAD_X + 55) // middle x
+#define DPAD_M_Y (DPAD_Y + 55) // middle y
+static TouchButtonType s_current_button = TOUCH_NONE;
+
+static const GRect touch_a_bounds = GRect(152, 180, 48, 48);
+static const GRect touch_b_bounds = GRect(107, 137, 59, 56);
+static const GRect touch_dpad_bounds = GRect(DPAD_X, DPAD_Y, DPAD_W, DPAD_H);
+static const int32_t dpad_angles[4][2] = {
+  {135, 225}, // up
+  {225, 315}, // left
+  {-1, -1}, // down is on 315 < a < 45 which is a special case, so just do if none of the above
+  {45, 135}, // right
+};
+#endif
 
 /* Game loading handlers */
 static void load_game() {
@@ -33,32 +54,12 @@ static void up_click_handler(ClickRecognizerRef recognizer, void *context) {
   Pokemon_handle_up(s_graphics);
 }
 
-static void up_press_handler(ClickRecognizerRef recognizer, void *context) {
-  
-}
-
-static void up_release_handler(ClickRecognizerRef recognizer, void *context) {
-  
-}
-
 static void down_click_handler(ClickRecognizerRef recognizer, void *context) {
   Pokemon_handle_down(s_graphics);
 }
 
-static void down_press_handler(ClickRecognizerRef recognizer, void *context) {
-  
-}
-
-static void down_release_handler(ClickRecognizerRef recognizer, void *context) {
-  
-}
-
 static void back_click_handler(ClickRecognizerRef recognizer, void *context) {
   Pokemon_handle_back(s_graphics);
-}
-
-static void accel_tap_handler(AccelAxisType axis, int32_t direction) {
-
 }
 
 static void click_config_provider(void *context) {
@@ -68,9 +69,80 @@ static void click_config_provider(void *context) {
   window_single_click_subscribe(BUTTON_ID_BACK, back_click_handler);
 
   window_raw_click_subscribe(BUTTON_ID_SELECT, select_press_handler, select_release_handler, NULL);
-  window_raw_click_subscribe(BUTTON_ID_UP, up_press_handler, up_release_handler, NULL);
-  window_raw_click_subscribe(BUTTON_ID_DOWN, down_press_handler, down_release_handler, NULL);
 }
+
+#if defined(PBL_PLATFORM_EMERY)
+TouchButtonType get_button_from_touch_location(int16_t x, int16_t y) {
+  GPoint touch_point = GPoint(x, y);
+  // Check A
+  if (grect_contains_point(&touch_a_bounds, &touch_point)) {
+    return TOUCH_A;
+  }
+
+  // Check B
+  if (grect_contains_point(&touch_b_bounds, &touch_point)) {
+    return TOUCH_B;
+  }
+
+  // Check dpad
+  if (grect_contains_point(&touch_dpad_bounds, &touch_point)) {
+    int32_t angle = TRIGANGLE_TO_DEG(atan2_lookup(x - DPAD_M_X, y - DPAD_M_Y));
+
+    uint8_t i;
+    TouchButtonType default_direction = TOUCH_NONE;
+    for (i = 0; i < 4; i++) {
+      APP_LOG(APP_LOG_LEVEL_DEBUG, "%d <= %d < %d ? %d",
+        dpad_angles[i][0], angle, dpad_angles[i][1],
+        angle >= dpad_angles[i][0] && angle < dpad_angles[i][1]);
+      if (dpad_angles[i][0] == -1) {
+        default_direction = TOUCH_UP + i;
+      } else if (angle >= dpad_angles[i][0] && angle < dpad_angles[i][1]) {
+        return TOUCH_UP + i;
+      }
+    }
+    return default_direction;
+  }
+
+  return TOUCH_NONE;
+}
+
+static void handle_touchdown(int16_t x, int16_t y) {
+  s_current_button = get_button_from_touch_location(x, y);
+
+  switch (s_current_button) {
+    case TOUCH_A:
+      Pokemon_handle_press_a(s_graphics);
+      break;
+    default:
+      break;
+  }
+}
+
+static void handle_liftoff(int16_t x, int16_t y) {
+  switch (s_current_button) {
+    case TOUCH_A:
+      Pokemon_handle_release_a(s_graphics);
+      break;
+    default:
+      break;
+  }
+
+  s_current_button = TOUCH_NONE;
+}
+
+static void touch_handler(const TouchEvent *event, void *context) {
+  switch (event->type) {
+    case TouchEvent_Touchdown:
+      handle_touchdown(event->x, event->y);
+      break;
+    case TouchEvent_PositionUpdate:
+      break;
+    case TouchEvent_Liftoff:
+      handle_liftoff(event->x, event->y);
+      break;
+  }
+}
+#endif
 
 static void frame_timer_handle(void* context) {
   // requeue timer at start, not sure if it's too fast for the logic and will break
@@ -132,8 +204,10 @@ void main_window_push() {
   if(!s_window) {
     s_window = window_create();
     window_set_click_config_provider(s_window, click_config_provider);
-    accel_tap_service_subscribe(accel_tap_handler);
     app_focus_service_subscribe(will_focus_handler);
+#if defined(PBL_PLATFORM_EMERY)
+    touch_service_subscribe(touch_handler, NULL);
+#endif
     window_set_window_handlers(s_window, (WindowHandlers) {
       .load = window_load,
       .unload = window_unload,

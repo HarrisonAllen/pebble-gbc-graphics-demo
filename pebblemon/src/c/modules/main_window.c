@@ -113,6 +113,8 @@ static void handle_touchdown(int16_t x, int16_t y) {
     case TOUCH_A:
       Pokemon_handle_press_a(s_graphics);
       break;
+    case TOUCH_B:
+      Pokemon_handle_press_b(s_graphics);
     default:
       break;
   }

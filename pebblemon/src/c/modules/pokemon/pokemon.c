@@ -572,23 +572,23 @@ void Pokemon_initialize(Window *window, GBC_Graphics *graphics, Layer *backgroun
 #if defined(PBL_PLATFORM_EMERY)
   Layer *window_layer = window_get_root_layer(window);
 
-  s_dpad_bmap_layer = bitmap_layer_create(GRect(3, 153, 72, 72));
+  s_dpad_bmap_layer = bitmap_layer_create(GRect(16, 149, 72, 72));
   s_dpad_bmap = gbitmap_create_with_resource(RESOURCE_ID_IMAGE_DPAD);
   bitmap_layer_set_bitmap(s_dpad_bmap_layer, s_dpad_bmap);
   bitmap_layer_set_compositing_mode(s_dpad_bmap_layer, GCompOpSet);
   
-  s_a_bmap_layer = bitmap_layer_create(GRect(155, 153, 42, 42));
+  s_a_bmap_layer = bitmap_layer_create(GRect(153, 181, 33, 33));
   s_a_bmap = gbitmap_create_with_resource(RESOURCE_ID_IMAGE_A_BUTTON);
   bitmap_layer_set_bitmap(s_a_bmap_layer, s_a_bmap);
   bitmap_layer_set_compositing_mode(s_a_bmap_layer, GCompOpSet);
   
-  s_b_bmap_layer = bitmap_layer_create(GRect(101, 183, 42, 42));
+  s_b_bmap_layer = bitmap_layer_create(GRect(115, 153, 33, 33));
   s_b_bmap = gbitmap_create_with_resource(RESOURCE_ID_IMAGE_B_BUTTON);
   bitmap_layer_set_bitmap(s_b_bmap_layer, s_b_bmap);
   bitmap_layer_set_compositing_mode(s_b_bmap_layer, GCompOpSet);
   layer_set_hidden(bitmap_layer_get_layer(s_b_bmap_layer), true);
   
-  s_start_bmap_layer = bitmap_layer_create(GRect(93, 195, 57, 30));
+  s_start_bmap_layer = bitmap_layer_create(GRect(109, 154, 43, 30));
   s_start_bmap = gbitmap_create_with_resource(RESOURCE_ID_IMAGE_START_BUTTON);
   bitmap_layer_set_bitmap(s_start_bmap_layer, s_start_bmap);
   bitmap_layer_set_compositing_mode(s_start_bmap_layer, GCompOpSet);

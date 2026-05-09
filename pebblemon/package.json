@@ -128,7 +128,7 @@
         {
           "type": "bitmap",
           "name": "IMAGE_DPAD",
-          "file": "images/dpad.png",
+          "file": "images/dpad-buttons.png",
           "targetPlatforms": [
             "emery"
           ]
@@ -136,7 +136,7 @@
         {
           "type": "bitmap",
           "name": "IMAGE_A_BUTTON",
-          "file": "images/a-button.png",
+          "file": "images/a-button-small.png",
           "targetPlatforms": [
             "emery"
           ]
@@ -144,7 +144,7 @@
         {
           "type": "bitmap",
           "name": "IMAGE_B_BUTTON",
-          "file": "images/b-button.png",
+          "file": "images/b-button-small.png",
           "targetPlatforms": [
             "emery"
           ]
@@ -152,7 +152,7 @@
         {
           "type": "bitmap",
           "name": "IMAGE_START_BUTTON",
-          "file": "images/start-button.png",
+          "file": "images/start-button-small.png",
           "targetPlatforms": [
             "emery"
           ]

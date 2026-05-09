@@ -2569,6 +2569,53 @@ void Pokemon_handle_press_b(GBC_Graphics *graphics) {
       break;
   }
 }
+
+void Pokemon_handle_press_up(GBC_Graphics *graphics) {
+  switch (s_game_state) {
+    case PG_PAUSE:
+      handle_up_in_menu(graphics);
+      break;
+    case PG_INTRO:
+      handle_up_in_intro(graphics);
+      break;
+    case PG_BATTLE:
+      handle_up_in_battle(graphics);
+      break;
+    case PG_TREE:
+      handle_up_in_tree(graphics);
+      break;
+    default:
+      break;
+  }
+}
+
+void Pokemon_handle_press_left(GBC_Graphics *graphics) {
+
+}
+
+void Pokemon_handle_press_down(GBC_Graphics *graphics) {
+  switch (s_game_state) {
+    case PG_PAUSE:
+      handle_down_in_menu(graphics);
+      break;
+    case PG_INTRO:
+      handle_down_in_intro(graphics);
+      break;
+    case PG_BATTLE:
+      handle_down_in_battle(graphics);
+      break;
+    case PG_TREE:
+      handle_down_in_tree(graphics);
+      break;
+    default:
+      break;
+  }
+}
+
+void Pokemon_handle_press_right(GBC_Graphics *graphics) {
+
+}
+
 #endif
 
 void Pokemon_deinitialize(GBC_Graphics *graphics) {

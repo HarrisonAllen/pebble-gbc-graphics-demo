@@ -103,7 +103,10 @@ void Pokemon_handle_back(GBC_Graphics *graphics);
 void Pokemon_handle_focus_lost(GBC_Graphics *graphics);
 #if defined(PBL_PLATFORM_EMERY)
 void Pokemon_handle_press_a(GBC_Graphics *graphics);
-void Pokemon_handle_release_a(GBC_Graphics *graphics);
 void Pokemon_handle_press_b(GBC_Graphics *graphics);
+void Pokemon_handle_press_up(GBC_Graphics *graphics);
+void Pokemon_handle_press_left(GBC_Graphics *graphics);
+void Pokemon_handle_press_down(GBC_Graphics *graphics);
+void Pokemon_handle_press_right(GBC_Graphics *graphics);
 #endif
     

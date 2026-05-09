@@ -105,10 +105,16 @@ static void window_load(Window *window) {
   window_set_background_color(window, GColorBlack);
   
   s_background_layer = layer_create(bounds);
+  
+  s_background_layer = layer_create_with_data(
+      bounds, 
+      sizeof(s_graphics)
+  );
   layer_add_child(window_get_root_layer(window), s_background_layer);
   layer_mark_dirty(s_background_layer);
 
   s_graphics = GBC_Graphics_ctor(window);
+  *(GBC_Graphics * *)layer_get_data(s_background_layer) = s_graphics;
   load_game();
   
   s_frame_timer = app_timer_register(FRAME_DURATION, frame_timer_handle, NULL);

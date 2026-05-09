@@ -145,6 +145,8 @@ static void load_screen(GBC_Graphics *graphics) {
 }
 
 static void background_update_proc(Layer *layer, GContext *ctx) {
+  GBC_Graphics *graphics = *(GBC_Graphics * *)layer_get_data(layer);
+
   GRect bounds = layer_get_bounds(layer);
   graphics_context_set_stroke_width(ctx, 1);
   graphics_context_set_antialiased(ctx, false);
@@ -164,17 +166,17 @@ static void background_update_proc(Layer *layer, GContext *ctx) {
   graphics_context_set_fill_color(ctx, GColorBlack);
   graphics_fill_rect(ctx, rect_bounds, 0, GCornerNone);
 
-  rect_bounds = SCREEN_BOUNDS_SQUARE;
+  rect_bounds = GBC_Graphics_get_screen_bounds(graphics);
   rect_bounds = GRect(rect_bounds.origin.x - 3, rect_bounds.origin.y - 3, rect_bounds.size.w + 6, rect_bounds.size.h + 6);
   graphics_context_set_stroke_color(ctx, GColorBlack);
   graphics_draw_rect(ctx, rect_bounds);
   
-  rect_bounds = SCREEN_BOUNDS_SQUARE;
+  rect_bounds = GBC_Graphics_get_screen_bounds(graphics);
   rect_bounds = GRect(rect_bounds.origin.x - 2, rect_bounds.origin.y - 2, rect_bounds.size.w + 4, rect_bounds.size.h + 4);
   graphics_context_set_stroke_color(ctx, GColorWhite);
   graphics_draw_rect(ctx, rect_bounds);
 
-  rect_bounds = SCREEN_BOUNDS_SQUARE;
+  rect_bounds = GBC_Graphics_get_screen_bounds(graphics);
   rect_bounds = GRect(rect_bounds.origin.x - 1, rect_bounds.origin.y - 1, rect_bounds.size.w + 2, rect_bounds.size.h + 2);
   graphics_context_set_stroke_color(ctx, GColorBlack);
   graphics_draw_rect(ctx, rect_bounds);
@@ -502,10 +504,16 @@ static void lerp_palette(uint8_t *start, uint8_t *end, uint8_t index, uint8_t *o
 
 void Pokemon_initialize(GBC_Graphics *graphics, Layer *background_layer) {
   layer_set_update_proc(background_layer, background_update_proc);
+  
   s_background_layer = background_layer;
 
   s_game_state = PG_INTRO;
-  GBC_Graphics_set_screen_bounds(graphics, SCREEN_BOUNDS_SQUARE);
+  GBC_Graphics_set_screen_bounds(graphics, GRect(
+    SCREEN_BOUNDS_SQUARE.origin.x,
+    3,
+    SCREEN_BOUNDS_SQUARE.size.w,
+    SCREEN_BOUNDS_SQUARE.size.h
+  ));
   GBC_Graphics_window_set_offset_pos(graphics, 0, 168);
   GBC_Graphics_lcdc_set_8x16_sprite_mode_enabled(graphics, false);
   for (uint8_t i = 0; i < 40; i++) {
@@ -937,7 +945,7 @@ static void play(GBC_Graphics *graphics) {
             GBC_Graphics_oam_set_sprite_priority(graphics, 5, true);
           }
         #endif
-          __attribute__ ((fallthrough));
+          // fall through
         case 0:
           set_player_sprites(graphics, false,  s_player_direction == D_RIGHT);
           break;
@@ -985,7 +993,7 @@ static void play(GBC_Graphics *graphics) {
         case 0:
           GBC_Graphics_oam_set_sprite_pos(graphics, 6, s_player_sprite_x, s_player_sprite_y + 8);
           GBC_Graphics_oam_set_sprite_pos(graphics, 7, s_player_sprite_x + 8, s_player_sprite_y + 8);
-          __attribute__ ((fallthrough));
+          // fall through
         case 6:
         case 8:
         case 14:
@@ -1932,7 +1940,7 @@ void Pokemon_step(GBC_Graphics *graphics) {
               break;
             case 8:
               s_game_state = PG_PLAY;
-              __attribute__ ((fallthrough));
+              // fall through
             case 4:
             case 6:
               GBC_Graphics_oam_hide_sprite(graphics, 24 + 0);

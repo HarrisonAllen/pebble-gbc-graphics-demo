@@ -75,6 +75,10 @@ static bool s_clear_dialogue = true;
 static uint8_t s_cur_bg_palettes[PALETTE_BANK_SIZE];
 static bool s_game_started;
 
+// Buttons
+static GBitmap *s_dpad_bmap, *s_b_bmap, *s_a_bmap, *s_start_bmap;
+static BitmapLayer *s_dpad_bmap_layer, *s_b_bmap_layer, *s_a_bmap_layer, *s_start_bmap_layer;
+
 static GPoint direction_to_point(PlayerDirection dir) {
     switch (dir) {
         case D_UP:  return GPoint(0, -1);
@@ -502,7 +506,7 @@ static void lerp_palette(uint8_t *start, uint8_t *end, uint8_t index, uint8_t *o
 }
 #endif
 
-void Pokemon_initialize(GBC_Graphics *graphics, Layer *background_layer) {
+void Pokemon_initialize(Window *window, GBC_Graphics *graphics, Layer *background_layer) {
   layer_set_update_proc(background_layer, background_update_proc);
   
   s_background_layer = background_layer;
@@ -563,6 +567,38 @@ void Pokemon_initialize(GBC_Graphics *graphics, Layer *background_layer) {
     draw_menu(graphics, GRect(START_MENU_ROOT_X, START_MENU_ROOT_Y, 12, 6), "NEW GAME\n\nQUIT", false, false);
     set_num_menu_items(2);
   }
+
+// #if true
+#if defined(PBL_PLATFORM_EMERY)
+  Layer *window_layer = window_get_root_layer(window);
+
+  s_dpad_bmap_layer = bitmap_layer_create(GRect(3, 153, 72, 72));
+  s_dpad_bmap = gbitmap_create_with_resource(RESOURCE_ID_IMAGE_DPAD);
+  bitmap_layer_set_bitmap(s_dpad_bmap_layer, s_dpad_bmap);
+  bitmap_layer_set_compositing_mode(s_dpad_bmap_layer, GCompOpSet);
+  
+  s_a_bmap_layer = bitmap_layer_create(GRect(155, 153, 42, 42));
+  s_a_bmap = gbitmap_create_with_resource(RESOURCE_ID_IMAGE_A_BUTTON);
+  bitmap_layer_set_bitmap(s_a_bmap_layer, s_a_bmap);
+  bitmap_layer_set_compositing_mode(s_a_bmap_layer, GCompOpSet);
+  
+  s_b_bmap_layer = bitmap_layer_create(GRect(101, 183, 42, 42));
+  s_b_bmap = gbitmap_create_with_resource(RESOURCE_ID_IMAGE_B_BUTTON);
+  bitmap_layer_set_bitmap(s_b_bmap_layer, s_b_bmap);
+  bitmap_layer_set_compositing_mode(s_b_bmap_layer, GCompOpSet);
+  layer_set_hidden(bitmap_layer_get_layer(s_b_bmap_layer), true);
+  
+  s_start_bmap_layer = bitmap_layer_create(GRect(93, 195, 57, 30));
+  s_start_bmap = gbitmap_create_with_resource(RESOURCE_ID_IMAGE_START_BUTTON);
+  bitmap_layer_set_bitmap(s_start_bmap_layer, s_start_bmap);
+  bitmap_layer_set_compositing_mode(s_start_bmap_layer, GCompOpSet);
+  // layer_set_hidden(bitmap_layer_get_layer(s_start_bmap_layer), true);
+
+  layer_add_child(window_layer, bitmap_layer_get_layer(s_dpad_bmap_layer));
+  layer_add_child(window_layer, bitmap_layer_get_layer(s_a_bmap_layer));
+  layer_add_child(window_layer, bitmap_layer_get_layer(s_b_bmap_layer));
+  layer_add_child(window_layer, bitmap_layer_get_layer(s_start_bmap_layer));
+#endif
 }
 
 static void load_blocks_in_direction(GBC_Graphics *graphics, PlayerDirection direction) {
@@ -2409,4 +2445,22 @@ void Pokemon_deinitialize(GBC_Graphics *graphics) {
     s_world_map = NULL;
   }
   layer_set_update_proc(s_background_layer, NULL);
+    
+  if (s_dpad_bmap_layer != NULL)
+    bitmap_layer_destroy(s_dpad_bmap_layer);
+  if (s_b_bmap_layer != NULL)
+    bitmap_layer_destroy(s_b_bmap_layer);
+  if (s_a_bmap_layer != NULL)
+    bitmap_layer_destroy(s_a_bmap_layer);
+  if (s_start_bmap_layer != NULL)
+    bitmap_layer_destroy(s_start_bmap_layer);
+
+  if (s_dpad_bmap != NULL)
+    gbitmap_destroy(s_dpad_bmap);
+  if (s_b_bmap != NULL)
+    gbitmap_destroy(s_b_bmap);
+  if (s_a_bmap != NULL)
+    gbitmap_destroy(s_a_bmap);
+  if (s_start_bmap != NULL)
+    gbitmap_destroy(s_start_bmap);
 }

@@ -9,7 +9,7 @@ static Layer *s_background_layer;
 
 /* Game loading handlers */
 static void load_game() {
-  Pokemon_initialize(s_graphics, s_background_layer);
+  Pokemon_initialize(s_window, s_graphics, s_background_layer);
 }
 
 static void unload_game() {

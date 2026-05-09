@@ -92,7 +92,7 @@ typedef struct {
     uint8_t player_items;
 } OldPokemonSaveData;
 
-void Pokemon_initialize(GBC_Graphics *graphics, Layer *background_layer);
+void Pokemon_initialize(Window *window, GBC_Graphics *graphics, Layer *background_layer);
 void Pokemon_deinitialize(GBC_Graphics *graphics);
 void Pokemon_step(GBC_Graphics *graphics);
 void Pokemon_handle_select(GBC_Graphics *graphics, bool pressed);

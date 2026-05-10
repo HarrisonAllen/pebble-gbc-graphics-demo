@@ -1,7 +1,7 @@
 {
   "name": "pebblemon",
   "author": "Harrison Allen",
-  "version": "1.8.0",
+  "version": "2.0.0",
   "keywords": [
     "pebble-app"
   ],
@@ -124,6 +124,38 @@
           "type": "raw",
           "name": "DATA_POKEMON_NAMES",
           "file": "data/PokemonNames.bin"
+        },
+        {
+          "type": "bitmap",
+          "name": "IMAGE_DPAD",
+          "file": "images/dpad-buttons.png",
+          "targetPlatforms": [
+            "emery"
+          ]
+        },
+        {
+          "type": "bitmap",
+          "name": "IMAGE_A_BUTTON",
+          "file": "images/a-button-small.png",
+          "targetPlatforms": [
+            "emery"
+          ]
+        },
+        {
+          "type": "bitmap",
+          "name": "IMAGE_B_BUTTON",
+          "file": "images/b-button-small.png",
+          "targetPlatforms": [
+            "emery"
+          ]
+        },
+        {
+          "type": "bitmap",
+          "name": "IMAGE_START_BUTTON",
+          "file": "images/start-button-small.png",
+          "targetPlatforms": [
+            "emery"
+          ]
         }
       ]
     }

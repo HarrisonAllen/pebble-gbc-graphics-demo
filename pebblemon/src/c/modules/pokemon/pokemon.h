@@ -92,7 +92,7 @@ typedef struct {
     uint8_t player_items;
 } OldPokemonSaveData;
 
-void Pokemon_initialize(GBC_Graphics *graphics, Layer *background_layer);
+void Pokemon_initialize(Window *window, GBC_Graphics *graphics, Layer *background_layer);
 void Pokemon_deinitialize(GBC_Graphics *graphics);
 void Pokemon_step(GBC_Graphics *graphics);
 void Pokemon_handle_select(GBC_Graphics *graphics, bool pressed);
@@ -101,3 +101,16 @@ void Pokemon_handle_down(GBC_Graphics *graphics);
 void Pokemon_handle_up(GBC_Graphics *graphics);
 void Pokemon_handle_back(GBC_Graphics *graphics);
 void Pokemon_handle_focus_lost(GBC_Graphics *graphics);
+#if defined(PBL_PLATFORM_EMERY)
+void Pokemon_handle_press_a(GBC_Graphics *graphics);
+void Pokemon_handle_press_b(GBC_Graphics *graphics);
+void Pokemon_handle_press_up(GBC_Graphics *graphics);
+void Pokemon_handle_press_left(GBC_Graphics *graphics);
+void Pokemon_handle_press_down(GBC_Graphics *graphics);
+void Pokemon_handle_press_right(GBC_Graphics *graphics);
+void Pokemon_handle_release_up(GBC_Graphics *graphics);
+void Pokemon_handle_release_left(GBC_Graphics *graphics);
+void Pokemon_handle_release_down(GBC_Graphics *graphics);
+void Pokemon_handle_release_right(GBC_Graphics *graphics);
+#endif
+    

@@ -54,7 +54,7 @@ static bool s_flip_walk, s_can_move;
 static uint16_t s_target_x, s_target_y;
 static uint8_t s_warp_route;
 static uint16_t s_warp_x, s_warp_y;
-static bool s_up_press_queued, s_down_press_queued;
+static bool s_turn_left_queued, s_turn_right_queued;
 static uint16_t s_steps_since_last_encounter;
 
 // Options
@@ -69,11 +69,38 @@ int s_accel_x_cal, s_accel_y_cal;
 
 // Misc
 static bool s_select_pressed;
+static bool s_interact_queued = false;
 static uint8_t *s_world_map;
 static Layer *s_background_layer;
 static bool s_clear_dialogue = true;
 static uint8_t s_cur_bg_palettes[PALETTE_BANK_SIZE];
 static bool s_game_started;
+
+// Buttons
+static GBitmap *s_dpad_bmap, *s_b_bmap, *s_a_bmap, *s_start_bmap;
+static BitmapLayer *s_dpad_bmap_layer, *s_b_bmap_layer, *s_a_bmap_layer, *s_start_bmap_layer;
+static bool s_touches_pressed[4] = {
+  false, // up
+  false, // left
+  false, // down
+  false  // right
+};
+
+static PlayerDirection dpad_pressed() {
+  for (uint8_t i = 0; i < 4; i++) {
+    if (s_touches_pressed[i]) {
+      return (PlayerDirection)i;
+    }
+  }
+  return D_NONE;
+}
+
+static void clear_pressed() {
+  s_select_pressed = false;
+  for (uint8_t i = 0; i < 4; i++) {
+    s_touches_pressed[i] = false;
+  }
+}
 
 static GPoint direction_to_point(PlayerDirection dir) {
     switch (dir) {
@@ -145,6 +172,8 @@ static void load_screen(GBC_Graphics *graphics) {
 }
 
 static void background_update_proc(Layer *layer, GContext *ctx) {
+  GBC_Graphics *graphics = *(GBC_Graphics * *)layer_get_data(layer);
+
   GRect bounds = layer_get_bounds(layer);
   graphics_context_set_stroke_width(ctx, 1);
   graphics_context_set_antialiased(ctx, false);
@@ -164,17 +193,17 @@ static void background_update_proc(Layer *layer, GContext *ctx) {
   graphics_context_set_fill_color(ctx, GColorBlack);
   graphics_fill_rect(ctx, rect_bounds, 0, GCornerNone);
 
-  rect_bounds = SCREEN_BOUNDS_SQUARE;
+  rect_bounds = GBC_Graphics_get_screen_bounds(graphics);
   rect_bounds = GRect(rect_bounds.origin.x - 3, rect_bounds.origin.y - 3, rect_bounds.size.w + 6, rect_bounds.size.h + 6);
   graphics_context_set_stroke_color(ctx, GColorBlack);
   graphics_draw_rect(ctx, rect_bounds);
   
-  rect_bounds = SCREEN_BOUNDS_SQUARE;
+  rect_bounds = GBC_Graphics_get_screen_bounds(graphics);
   rect_bounds = GRect(rect_bounds.origin.x - 2, rect_bounds.origin.y - 2, rect_bounds.size.w + 4, rect_bounds.size.h + 4);
   graphics_context_set_stroke_color(ctx, GColorWhite);
   graphics_draw_rect(ctx, rect_bounds);
 
-  rect_bounds = SCREEN_BOUNDS_SQUARE;
+  rect_bounds = GBC_Graphics_get_screen_bounds(graphics);
   rect_bounds = GRect(rect_bounds.origin.x - 1, rect_bounds.origin.y - 1, rect_bounds.size.w + 2, rect_bounds.size.h + 2);
   graphics_context_set_stroke_color(ctx, GColorBlack);
   graphics_draw_rect(ctx, rect_bounds);
@@ -395,6 +424,14 @@ static int check_for_object(uint16_t target_x, uint16_t target_y) {
   return -1;
 }
 
+// uses start if false
+static void change_b_button(bool use_b_button) {
+#if defined(PBL_PLATFORM_EMERY)
+  layer_set_hidden(bitmap_layer_get_layer(s_b_bmap_layer), !use_b_button);
+  layer_set_hidden(bitmap_layer_get_layer(s_start_bmap_layer), use_b_button);
+#endif
+}
+
 static void load_resources(GBC_Graphics *graphics) {
   ResHandle handle = resource_get_handle(map_files[s_route_num]);
   size_t res_size = resource_size(handle);
@@ -416,6 +453,7 @@ static void load_resources(GBC_Graphics *graphics) {
 static void load_game(GBC_Graphics *graphics) {
   s_player_mode = P_STAND;
   s_game_state = PG_PLAY;
+  change_b_button(false);
   s_walk_frame = 0;
   s_poll_frame = 0;
   s_player_sprite_x = 16 * 4 + SPRITE_OFFSET_X;
@@ -500,12 +538,22 @@ static void lerp_palette(uint8_t *start, uint8_t *end, uint8_t index, uint8_t *o
 }
 #endif
 
-void Pokemon_initialize(GBC_Graphics *graphics, Layer *background_layer) {
+void Pokemon_initialize(Window *window, GBC_Graphics *graphics, Layer *background_layer) {
   layer_set_update_proc(background_layer, background_update_proc);
+  
   s_background_layer = background_layer;
 
   s_game_state = PG_INTRO;
+#if defined(PBL_PLATFORM_EMERY)
+  GBC_Graphics_set_screen_bounds(graphics, GRect(
+    SCREEN_BOUNDS_SQUARE.origin.x,
+    3,
+    SCREEN_BOUNDS_SQUARE.size.w,
+    SCREEN_BOUNDS_SQUARE.size.h
+  ));
+#else
   GBC_Graphics_set_screen_bounds(graphics, SCREEN_BOUNDS_SQUARE);
+#endif
   GBC_Graphics_window_set_offset_pos(graphics, 0, 168);
   GBC_Graphics_lcdc_set_8x16_sprite_mode_enabled(graphics, false);
   for (uint8_t i = 0; i < 40; i++) {
@@ -555,6 +603,38 @@ void Pokemon_initialize(GBC_Graphics *graphics, Layer *background_layer) {
     draw_menu(graphics, GRect(START_MENU_ROOT_X, START_MENU_ROOT_Y, 12, 6), "NEW GAME\n\nQUIT", false, false);
     set_num_menu_items(2);
   }
+
+// #if true
+#if defined(PBL_PLATFORM_EMERY)
+  Layer *window_layer = window_get_root_layer(window);
+
+  s_dpad_bmap_layer = bitmap_layer_create(GRect(16, 149, 74, 74));
+  s_dpad_bmap = gbitmap_create_with_resource(RESOURCE_ID_IMAGE_DPAD);
+  bitmap_layer_set_bitmap(s_dpad_bmap_layer, s_dpad_bmap);
+  bitmap_layer_set_compositing_mode(s_dpad_bmap_layer, GCompOpSet);
+  
+  s_a_bmap_layer = bitmap_layer_create(GRect(157, 185, 33, 33));
+  s_a_bmap = gbitmap_create_with_resource(RESOURCE_ID_IMAGE_A_BUTTON);
+  bitmap_layer_set_bitmap(s_a_bmap_layer, s_a_bmap);
+  bitmap_layer_set_compositing_mode(s_a_bmap_layer, GCompOpSet);
+  
+  s_b_bmap_layer = bitmap_layer_create(GRect(115, 153, 33, 33));
+  s_b_bmap = gbitmap_create_with_resource(RESOURCE_ID_IMAGE_B_BUTTON);
+  bitmap_layer_set_bitmap(s_b_bmap_layer, s_b_bmap);
+  bitmap_layer_set_compositing_mode(s_b_bmap_layer, GCompOpSet);
+  // layer_set_hidden(bitmap_layer_get_layer(s_b_bmap_layer), true);
+  
+  s_start_bmap_layer = bitmap_layer_create(GRect(109, 154, 43, 30));
+  s_start_bmap = gbitmap_create_with_resource(RESOURCE_ID_IMAGE_START_BUTTON);
+  bitmap_layer_set_bitmap(s_start_bmap_layer, s_start_bmap);
+  bitmap_layer_set_compositing_mode(s_start_bmap_layer, GCompOpSet);
+  layer_set_hidden(bitmap_layer_get_layer(s_start_bmap_layer), true);
+
+  layer_add_child(window_layer, bitmap_layer_get_layer(s_dpad_bmap_layer));
+  layer_add_child(window_layer, bitmap_layer_get_layer(s_a_bmap_layer));
+  layer_add_child(window_layer, bitmap_layer_get_layer(s_b_bmap_layer));
+  layer_add_child(window_layer, bitmap_layer_get_layer(s_start_bmap_layer));
+#endif
 }
 
 static void load_blocks_in_direction(GBC_Graphics *graphics, PlayerDirection direction) {
@@ -587,6 +667,8 @@ static void load_blocks_in_direction(GBC_Graphics *graphics, PlayerDirection dir
       bg_root_x += 18;
       num_x_tiles = 2;
       num_y_tiles = 18;
+      break;
+    default:
       break;
   }
   load_tiles(graphics, bg_root_x & 31, bg_root_y & 31, tile_root_x, tile_root_y, num_x_tiles, num_y_tiles);
@@ -650,18 +732,26 @@ static void play(GBC_Graphics *graphics) {
   }
   s_poll_frame = (s_poll_frame + 1) % 8;
   if (s_player_mode == P_STAND) {
-    if (s_up_press_queued) {
+    if (s_turn_left_queued) {
       s_player_direction = (s_player_direction + 1) & 3;
       set_player_sprites(graphics, false, s_player_direction == D_RIGHT);
-      s_up_press_queued = false;
+      s_turn_left_queued = false;
     }
-    if (s_down_press_queued) {
+    if (s_turn_right_queued) {
       s_player_direction = (s_player_direction - 1) & 3;
       set_player_sprites(graphics, false, s_player_direction == D_RIGHT);
-      s_down_press_queued = false;
+      s_turn_right_queued = false;
     }
-    if (s_select_pressed || (s_move_mode_toggle && s_move_toggle)) {
-      if (s_turn_mode_tilt) {
+    PlayerDirection dpad_dir = D_NONE;
+#if defined(PBL_PLATFORM_EMERY)
+    dpad_dir = dpad_pressed();
+    if (dpad_dir != D_NONE && dpad_dir != s_player_direction) {
+      s_player_direction = dpad_dir;
+      set_player_sprites(graphics, false, s_player_direction == D_RIGHT);
+    }
+#endif
+    if (s_select_pressed || (s_move_mode_toggle && s_move_toggle) || (dpad_dir != D_NONE) || s_interact_queued) {
+      if (s_turn_mode_tilt && (dpad_dir == D_NONE)) {
         AccelData accel = (AccelData) { .x = 0, .y = 0, .z = 0 };
         PlayerDirection old_direction = s_player_direction;
         accel_service_peek(&accel);
@@ -695,19 +785,27 @@ static void play(GBC_Graphics *graphics) {
       GBC_Graphics_oam_set_sprite_priority(graphics, 4, false);
       GBC_Graphics_oam_set_sprite_priority(graphics, 5, false);
 
+      if (s_interact_queued) {
+        s_player_mode = P_STAND;
+        s_can_move = false;
+      }
+
       int item_num = check_for_item(s_target_x+8, s_target_y);
       if ((item_num != -1) && !HAS_ITEM(s_player_items, item_num)) {
-        s_player_items = SET_ITEM(s_player_items, item_num);
-        hide_item(graphics);
         if (s_move_mode_toggle) {
           s_move_toggle = false;
         }
-        load_screen(graphics);
-        begin_dialogue(graphics, DIALOGUE_BOUNDS, DIALOGUE_ROOT, item_num, true);
-        s_prev_game_state = s_game_state;
-        s_game_state = PG_DIALOGUE;
         s_player_mode = P_STAND;
         s_can_move = false;
+        if (s_select_pressed || s_interact_queued) {
+          s_player_items = SET_ITEM(s_player_items, item_num);
+          hide_item(graphics);
+          load_screen(graphics);
+          begin_dialogue(graphics, DIALOGUE_BOUNDS, DIALOGUE_ROOT, item_num, true);
+          s_prev_game_state = s_game_state;
+          s_game_state = PG_DIALOGUE;
+          change_b_button(true);
+        }
       } else {
         PokemonSquareInfo current_block_type = get_block_type(s_world_map, s_player_x, s_player_y);
         PokemonSquareInfo target_block_type = get_block_type(s_world_map, s_target_x+8, s_target_y);
@@ -726,67 +824,80 @@ static void play(GBC_Graphics *graphics) {
                 load_screen(graphics);
                 s_player_mode = P_STAND;
                 s_can_move = false;
-                if (HAS_ITEM(s_player_items, ITEM_ID_CUT)) {
-                  s_prev_game_state = PG_TREE;
-                  s_tree_state = PT_CONFIRM;
-                  s_game_state = PG_DIALOGUE;
-                  begin_dialogue_from_string(graphics, DIALOGUE_BOUNDS, DIALOGUE_ROOT, "This tree can be\nCUT!\nWould you like\nto use CUT?", false);
-                } else {
-                  s_prev_game_state = s_game_state;
-                  s_game_state = PG_DIALOGUE;
-                  begin_dialogue_from_string(graphics, DIALOGUE_BOUNDS, DIALOGUE_ROOT, "This tree can be\nCUT!", true);
+                if ((s_select_pressed || s_interact_queued)) {
+                  if (HAS_ITEM(s_player_items, ITEM_ID_CUT)) {
+                    s_prev_game_state = PG_TREE;
+                    s_tree_state = PT_CONFIRM;
+                    s_game_state = PG_DIALOGUE;
+                    change_b_button(true);
+                    begin_dialogue_from_string(graphics, DIALOGUE_BOUNDS, DIALOGUE_ROOT, "This tree can be\nCUT!\nWould you like\nto use CUT?", false);
+                  } else {
+                    s_prev_game_state = s_game_state;
+                    s_game_state = PG_DIALOGUE;
+                    change_b_button(true);
+                    begin_dialogue_from_string(graphics, DIALOGUE_BOUNDS, DIALOGUE_ROOT, "This tree can be\nCUT!", true);
+                  }
                 }
                 break;
               case PO_TEXT:
-                load_screen(graphics);
-                begin_dialogue(graphics, DIALOGUE_BOUNDS, DIALOGUE_ROOT, data[0], true);
-                s_prev_game_state = s_game_state;
-                s_game_state = PG_DIALOGUE;
                 s_player_mode = P_STAND;
                 s_can_move = false;
+                if ((s_select_pressed || s_interact_queued)) {
+                  load_screen(graphics);
+                  begin_dialogue(graphics, DIALOGUE_BOUNDS, DIALOGUE_ROOT, data[0], true);
+                  s_prev_game_state = s_game_state;
+                  s_game_state = PG_DIALOGUE;
+                  change_b_button(true);
+                }
                 break;
               case PO_WARP:{
-                s_warp_route = data[0];
-                s_warp_x = data[1];
-                s_warp_y = data[2];
-                if (s_player_direction == D_UP) {
-                  s_player_mode = P_WARP_WALK;
-                  load_blocks_in_direction(graphics, s_player_direction);
-                } else {
-                  s_player_mode = P_WARP;
+                if (!s_interact_queued) {
+                  s_warp_route = data[0];
+                  s_warp_x = data[1];
+                  s_warp_y = data[2];
+                  if (s_player_direction == D_UP) {
+                    s_player_mode = P_WARP_WALK;
+                    load_blocks_in_direction(graphics, s_player_direction);
+                  } else {
+                    s_player_mode = P_WARP;
+                  }
+                  s_can_move = true;
                 }
-                s_can_move = true;
               } break;
               default:
+                s_player_mode = P_STAND;
                 s_can_move = false;
                 break;
             }
           } else {
+            s_player_mode = P_STAND;
             s_can_move = false;
           }
         } else {
-          if ((target_block_type == CLIFF_S && s_player_direction == D_DOWN)
-              || (target_block_type == CLIFF_W && s_player_direction == D_LEFT)
-              || (target_block_type == CLIFF_E && s_player_direction == D_RIGHT)) {
-            s_target_x += direction_to_point(s_player_direction).x * (TILE_WIDTH * 2);
-            s_target_y += direction_to_point(s_player_direction).y * (TILE_HEIGHT * 2);
-            s_player_mode = P_JUMP;
-            s_can_move = true;
-          } else {
-            s_can_move = (target_block_type == WALK || target_block_type == GRASS
-                          || (target_block_type == CLIFF_N && s_player_direction != D_DOWN));
-            s_can_move &= !(current_block_type == CLIFF_N && s_player_direction == D_UP);
-          }
-          if (!s_can_move) {
-            s_target_x = s_player_x;
-            s_target_y = s_player_y;
-          } else {
-            load_blocks_in_direction(graphics, s_player_direction);
-          #if defined(PBL_BW)
-            GBC_Graphics_oam_hide_sprite(graphics, 0);
-            GBC_Graphics_oam_hide_sprite(graphics, 1);
-          #endif
-            s_steps_since_last_encounter++;
+          if (!s_interact_queued) {
+            if ((target_block_type == CLIFF_S && s_player_direction == D_DOWN)
+                || (target_block_type == CLIFF_W && s_player_direction == D_LEFT)
+                || (target_block_type == CLIFF_E && s_player_direction == D_RIGHT)) {
+              s_target_x += direction_to_point(s_player_direction).x * (TILE_WIDTH * 2);
+              s_target_y += direction_to_point(s_player_direction).y * (TILE_HEIGHT * 2);
+              s_player_mode = P_JUMP;
+              s_can_move = true;
+            } else {
+              s_can_move = (target_block_type == WALK || target_block_type == GRASS
+                            || (target_block_type == CLIFF_N && s_player_direction != D_DOWN));
+              s_can_move &= !(current_block_type == CLIFF_N && s_player_direction == D_UP);
+            }
+            if (!s_can_move) {
+              s_target_x = s_player_x;
+              s_target_y = s_player_y;
+            } else {
+              load_blocks_in_direction(graphics, s_player_direction);
+            #if defined(PBL_BW)
+              GBC_Graphics_oam_hide_sprite(graphics, 0);
+              GBC_Graphics_oam_hide_sprite(graphics, 1);
+            #endif
+              s_steps_since_last_encounter++;
+            }
           }
         }
       }
@@ -853,6 +964,7 @@ static void play(GBC_Graphics *graphics) {
         if (ENCOUNTERS_ENABLED && (rand() % WILD_ODDS == 0) && (s_steps_since_last_encounter >= STEPS_BETWEEN_ENCOUNTERS)) {
           load_screen(graphics);
           s_game_state = PG_BATTLE;
+          change_b_button(true);
           if (s_vibrate_enabled) vibes_short_pulse();
           s_battle_state = PB_FLASH;
           s_battle_frame = 0;
@@ -919,6 +1031,7 @@ static void play(GBC_Graphics *graphics) {
         if (ENCOUNTERS_ENABLED && (rand() % WILD_ODDS == 0) && (s_steps_since_last_encounter >= STEPS_BETWEEN_ENCOUNTERS)) {
           load_screen(graphics);
           s_game_state = PG_BATTLE;
+          change_b_button(true);
           if (s_vibrate_enabled) vibes_short_pulse();
           s_battle_state = PB_FLASH;
           s_battle_frame = 0;
@@ -937,7 +1050,7 @@ static void play(GBC_Graphics *graphics) {
             GBC_Graphics_oam_set_sprite_priority(graphics, 5, true);
           }
         #endif
-          __attribute__ ((fallthrough));
+          // fall through
         case 0:
           set_player_sprites(graphics, false,  s_player_direction == D_RIGHT);
           break;
@@ -961,6 +1074,7 @@ static void play(GBC_Graphics *graphics) {
         if (s_can_move && ENCOUNTERS_ENABLED && (rand() % WILD_ODDS == 0) && (s_steps_since_last_encounter >= STEPS_BETWEEN_ENCOUNTERS)) {
           load_screen(graphics);
           s_game_state = PG_BATTLE;
+          change_b_button(true);
           if (s_vibrate_enabled) vibes_short_pulse();
           s_battle_state = PB_FLASH;
           s_battle_frame = 0;
@@ -985,7 +1099,7 @@ static void play(GBC_Graphics *graphics) {
         case 0:
           GBC_Graphics_oam_set_sprite_pos(graphics, 6, s_player_sprite_x, s_player_sprite_y + 8);
           GBC_Graphics_oam_set_sprite_pos(graphics, 7, s_player_sprite_x + 8, s_player_sprite_y + 8);
-          __attribute__ ((fallthrough));
+          // fall through
         case 6:
         case 8:
         case 14:
@@ -1126,6 +1240,8 @@ static void play(GBC_Graphics *graphics) {
     default:
       break;
   }
+
+  s_interact_queued = false;
 }
 
 static void draw_menu_info(GBC_Graphics *graphics) {
@@ -1817,6 +1933,7 @@ static void battle(GBC_Graphics *graphics) {
       } else {
         load_overworld(graphics);
         s_game_state = PG_PLAY;
+        change_b_button(false);
       }
       break;
   }
@@ -1852,6 +1969,7 @@ void Pokemon_step(GBC_Graphics *graphics) {
     set_cursor_pos(0);
     draw_pause_menu(graphics);
     s_game_state = PG_PAUSE;
+    change_b_button(true);
     s_menu_state = PM_BASE;
   }
   switch (s_game_state) {
@@ -1868,18 +1986,19 @@ void Pokemon_step(GBC_Graphics *graphics) {
         if (s_prev_game_state == PG_PLAY) {
           load_screen(graphics);
           s_game_state = PG_PLAY;
-          s_select_pressed = false;
+          change_b_button(false);
+          clear_pressed();
         } else if (s_prev_game_state == PG_PAUSE) {
           draw_pause_menu(graphics);
           s_game_state = PG_PAUSE;
-          s_select_pressed = false;
+          clear_pressed();
         } else if (s_prev_game_state == PG_BATTLE) {
           if (s_clear_dialogue) {
             draw_menu_rectangle(graphics, DIALOGUE_BOUNDS);
           }
           s_clear_dialogue = true;
           s_game_state = PG_BATTLE;
-          s_select_pressed = false;
+          clear_pressed();
         } else if (s_prev_game_state == PG_TREE) {
           switch (s_tree_state) {
             case PT_CONFIRM:
@@ -1887,12 +2006,12 @@ void Pokemon_step(GBC_Graphics *graphics) {
               draw_menu(graphics, CONFIRM_BOUNDS, "YES\n\nNO", false, true);
               set_num_menu_items(2);
               s_game_state = PG_TREE;
-              s_select_pressed = false;
+              clear_pressed();
               break;
             case PT_REPLACE:
               load_screen(graphics);
               s_game_state = PG_TREE;
-              s_select_pressed = false;
+              clear_pressed();
               break;
             default:
               break;
@@ -1932,7 +2051,8 @@ void Pokemon_step(GBC_Graphics *graphics) {
               break;
             case 8:
               s_game_state = PG_PLAY;
-              __attribute__ ((fallthrough));
+              change_b_button(false);
+              // fall through
             case 4:
             case 6:
               GBC_Graphics_oam_hide_sprite(graphics, 24 + 0);
@@ -1970,10 +2090,6 @@ void Pokemon_step(GBC_Graphics *graphics) {
     default:
       break;
   }
-}
-
-void Pokemon_handle_select(GBC_Graphics *graphics, bool pressed) {
-  s_select_pressed = pressed;
 }
 
 static void draw_pebble_info(GBC_Graphics *graphics) {
@@ -2047,172 +2163,220 @@ static void draw_items(GBC_Graphics *graphics) {
   }
 }
 
+void Pokemon_handle_select(GBC_Graphics *graphics, bool pressed) {
+  s_select_pressed = pressed;
+}
+
+void handle_select_in_menu(GBC_Graphics *graphics) {
+  switch(s_menu_state) {
+    case PM_BASE:
+      switch (get_cursor_pos()) {
+        case 0: // Stats
+          draw_stats(graphics);
+          s_menu_state = PM_STATS;
+          break;
+        case 1: // Pebble
+          draw_pebble_info(graphics);
+          s_menu_state = PM_PEBBLE;
+          break;
+        case 2: // Option
+          set_cursor_pos(0);
+          draw_option_menu(graphics);
+          s_menu_state = PM_OPTION;
+          break;
+        case 3: // Pack
+          draw_items(graphics);
+          s_menu_state = PM_PACK;
+          break;
+        case 4: // Quit
+          window_stack_pop(true);
+          break;
+      }
+      break;
+    case PM_OPTION:
+      switch (get_cursor_pos()) {
+        case 0: // Move Mode
+          s_move_mode_toggle = !s_move_mode_toggle;
+          draw_option_menu(graphics);
+          break;
+        case 1: // Turn Mode
+          s_turn_mode_tilt = !s_turn_mode_tilt;
+          AccelData accel = (AccelData) { .x = 0, .y = 0, .z = 0 };
+          accel_service_peek(&accel);
+          s_accel_x_cal = accel.x;
+          s_accel_y_cal = accel.y;
+          draw_option_menu(graphics);
+          break;
+        case 2: // Text Speed
+          s_text_speed = (s_text_speed + 1) % 3;
+          draw_option_menu(graphics);
+          break;
+        case 3: // Vibration
+          s_vibrate_enabled = !s_vibrate_enabled;
+          draw_option_menu(graphics);
+          break;
+        case 4: // Auto Battle
+          s_auto_battle = !s_auto_battle;
+          draw_option_menu(graphics);
+          break;
+        case 5: // Sprite
+          s_player_sprite = (s_player_sprite + 1) % (2 + (s_player_level / 5));
+          load_player_sprites(graphics);
+          draw_option_menu(graphics);
+          break;
+        case 6: // Cancel
+          s_menu_state = PM_BASE;
+          set_cursor_pos(2);
+          hide_preview_sprites(graphics, 8);
+          draw_pause_menu(graphics);
+          break;
+      }
+      break;
+    case PM_PEBBLE:
+      s_menu_state = PM_BASE;
+      draw_pause_menu(graphics);
+      break;
+    case PM_STATS:
+      s_menu_state = PM_BASE;
+      draw_pause_menu(graphics);
+      break;
+    case PM_PACK:
+      s_menu_state = PM_BASE;
+      draw_pause_menu(graphics);
+      break;
+    default:
+      break;
+  }
+}
+
+void handle_select_in_intro(GBC_Graphics *graphics) {
+  if (s_save_file_exists) {
+    switch(get_cursor_pos()) {
+      case 0: {// Continue
+        PokemonSaveData data;
+        load(&data);
+        s_route_num = data.route_num;
+        s_player_x = data.player_x;
+        s_player_y = data.player_y;
+        s_player_direction = data.player_direction;
+        s_player_sprite = data.player_sprite;
+        s_move_mode_toggle = data.move_mode_toggle;
+        s_turn_mode_tilt = data.turn_mode_tilt;
+        s_auto_battle = data.auto_battle;
+        s_vibrate_enabled = data.vibrate_enabled;
+        s_text_speed = data.text_speed;
+        s_player_level = data.player_level;
+        s_to_next_level = cube(s_player_level+1);
+        s_to_cur_level = s_player_level == 1 ? 0 : cube(s_player_level);
+        s_player_exp = data.player_exp;
+        s_stats_battles = data.battles;
+        s_stats_wins = data.wins;
+        s_stats_losses = data.losses;
+        s_stats_runs = data.runs;
+        s_player_items = data.player_items;
+        load_game(graphics);
+        s_game_state = PG_PLAY;
+        change_b_button(false);
+        clear_pressed();
+        s_game_started = true;
+      } break;
+      case 1: // New
+        s_player_x = PLAYER_ORIGIN_X;
+        s_player_y = PLAYER_ORIGIN_Y;
+        new_player_sprites(graphics);
+        load_game(graphics);
+        s_to_next_level = cube(s_player_level+1);
+        s_to_cur_level = s_player_level == 1 ? 0 : cube(s_player_level);
+        s_game_state = PG_PLAY;
+        change_b_button(false);
+        clear_pressed();
+        s_game_started = true;
+        break;
+      case 2: // Quit
+        window_stack_pop(true);
+        break;
+    }
+  } else {
+    switch(get_cursor_pos()) {
+      case 0: // New
+        s_player_x = PLAYER_ORIGIN_X;
+        s_player_y = PLAYER_ORIGIN_Y;
+        new_player_sprites(graphics);
+        load_game(graphics);
+        s_game_state = PG_PLAY;
+        change_b_button(false);
+        clear_pressed();
+        s_game_started = true;
+        break;
+      case 1: // Quit
+        window_stack_pop(true);
+        break;
+    }
+  }
+}
+
+void handle_select_in_dialogue(GBC_Graphics *graphics) {
+  handle_input_dialogue(graphics);
+}
+
+void handle_select_in_battle(GBC_Graphics *graphics) {
+  switch(s_battle_state) {
+    case PB_PLAYER_TURN:
+      switch (get_cursor_pos()) {
+        case 0: // Fight
+          clear_pressed();
+          s_player_goes_first = rand() % 2;
+          s_battle_state = s_player_goes_first ? PB_PLAYER_MOVE : PB_ENEMY_MOVE;
+          break;
+        case 1: // Run
+          clear_pressed();
+          s_battle_state = PB_RUN;
+          break;
+      }
+      break;
+    default:
+      break;
+  }
+}
+
+void handle_select_in_tree(GBC_Graphics *graphics) {
+  switch (s_tree_state) {
+    case PT_CONFIRM:
+      switch (get_cursor_pos()) {
+        case 0: // Yes
+          clear_pressed();
+          s_prev_game_state = PG_TREE;
+          s_tree_state = PT_REPLACE;
+          s_game_state = PG_DIALOGUE;
+          load_screen(graphics);
+          begin_dialogue_from_string(graphics, DIALOGUE_BOUNDS, DIALOGUE_ROOT, "You used CUT!", true);
+          break;
+        case 1: // No
+          clear_pressed();
+          load_screen(graphics);
+          s_game_state = PG_PLAY;
+          change_b_button(false);
+          break;
+      }
+      break;
+    default:
+      break;
+  }
+}
+
 void Pokemon_handle_select_click(GBC_Graphics *graphics) {
   switch(s_game_state) {
     case PG_PAUSE:
-      switch(s_menu_state) {
-        case PM_BASE:
-          switch (get_cursor_pos()) {
-            case 0: // Stats
-              draw_stats(graphics);
-              s_menu_state = PM_STATS;
-              break;
-            case 1: // Pebble
-              draw_pebble_info(graphics);
-              s_menu_state = PM_PEBBLE;
-              break;
-            case 2: // Option
-              set_cursor_pos(0);
-              draw_option_menu(graphics);
-              s_menu_state = PM_OPTION;
-              break;
-            case 3: // Pack
-              draw_items(graphics);
-              s_menu_state = PM_PACK;
-              break;
-            case 4: // Quit
-              window_stack_pop(true);
-              break;
-          }
-          break;
-        case PM_OPTION:
-          switch (get_cursor_pos()) {
-            case 0: // Move Mode
-              s_move_mode_toggle = !s_move_mode_toggle;
-              draw_option_menu(graphics);
-              break;
-            case 1: // Turn Mode
-              s_turn_mode_tilt = !s_turn_mode_tilt;
-              AccelData accel = (AccelData) { .x = 0, .y = 0, .z = 0 };
-              accel_service_peek(&accel);
-              s_accel_x_cal = accel.x;
-              s_accel_y_cal = accel.y;
-              draw_option_menu(graphics);
-              break;
-            case 2: // Text Speed
-              s_text_speed = (s_text_speed + 1) % 3;
-              draw_option_menu(graphics);
-              break;
-            case 3: // Vibration
-              s_vibrate_enabled = !s_vibrate_enabled;
-              draw_option_menu(graphics);
-              break;
-            case 4: // Auto Battle
-              s_auto_battle = !s_auto_battle;
-              draw_option_menu(graphics);
-              break;
-            case 5: // Sprite
-              s_player_sprite = (s_player_sprite + 1) % (2 + (s_player_level / 5));
-              load_player_sprites(graphics);
-              draw_option_menu(graphics);
-              break;
-            case 6: // Cancel
-              s_menu_state = PM_BASE;
-              set_cursor_pos(2);
-              hide_preview_sprites(graphics, 8);
-              draw_pause_menu(graphics);
-              break;
-          }
-          break;
-        case PM_PEBBLE:
-          s_menu_state = PM_BASE;
-          draw_pause_menu(graphics);
-          break;
-        case PM_STATS:
-          s_menu_state = PM_BASE;
-          draw_pause_menu(graphics);
-          break;
-        case PM_PACK:
-          s_menu_state = PM_BASE;
-          draw_pause_menu(graphics);
-          break;
-        default:
-          break;
-      }
+      handle_select_in_menu(graphics);
       break;
     case PG_INTRO:
-      if (s_save_file_exists) {
-        switch(get_cursor_pos()) {
-          case 0: {// Continue
-            PokemonSaveData data;
-            load(&data);
-            s_route_num = data.route_num;
-            s_player_x = data.player_x;
-            s_player_y = data.player_y;
-            s_player_direction = data.player_direction;
-            s_player_sprite = data.player_sprite;
-            s_move_mode_toggle = data.move_mode_toggle;
-            s_turn_mode_tilt = data.turn_mode_tilt;
-            s_auto_battle = data.auto_battle;
-            s_vibrate_enabled = data.vibrate_enabled;
-            s_text_speed = data.text_speed;
-            s_player_level = data.player_level;
-            s_to_next_level = cube(s_player_level+1);
-            s_to_cur_level = s_player_level == 1 ? 0 : cube(s_player_level);
-            s_player_exp = data.player_exp;
-            s_stats_battles = data.battles;
-            s_stats_wins = data.wins;
-            s_stats_losses = data.losses;
-            s_stats_runs = data.runs;
-            s_player_items = data.player_items;
-            load_game(graphics);
-            s_game_state = PG_PLAY;
-            s_select_pressed = false;
-            s_game_started = true;
-          } break;
-          case 1: // New
-            s_player_x = PLAYER_ORIGIN_X;
-            s_player_y = PLAYER_ORIGIN_Y;
-            new_player_sprites(graphics);
-            load_game(graphics);
-            s_to_next_level = cube(s_player_level+1);
-            s_to_cur_level = s_player_level == 1 ? 0 : cube(s_player_level);
-            s_game_state = PG_PLAY;
-            s_select_pressed = false;
-            s_game_started = true;
-            break;
-          case 2: // Quit
-            window_stack_pop(true);
-            break;
-        }
-      } else {
-        switch(get_cursor_pos()) {
-          case 0: // New
-            s_player_x = PLAYER_ORIGIN_X;
-            s_player_y = PLAYER_ORIGIN_Y;
-            new_player_sprites(graphics);
-            load_game(graphics);
-            s_game_state = PG_PLAY;
-            s_select_pressed = false;
-            s_game_started = true;
-            break;
-          case 1: // Quit
-            window_stack_pop(true);
-            break;
-        }
-      }
+      handle_select_in_intro(graphics);
       break;
     case PG_DIALOGUE:
-      handle_input_dialogue(graphics);
+      handle_select_in_dialogue(graphics);
       break;
     case PG_BATTLE:
-      switch(s_battle_state) {
-        case PB_PLAYER_TURN:
-          switch (get_cursor_pos()) {
-            case 0: // Fight
-              s_select_pressed = false;
-              s_player_goes_first = rand() % 2;
-              s_battle_state = s_player_goes_first ? PB_PLAYER_MOVE : PB_ENEMY_MOVE;
-              break;
-            case 1: // Run
-              s_select_pressed = false;
-              s_battle_state = PB_RUN;
-              break;
-          }
-          break;
-        default:
-          break;
-      }
+      handle_select_in_battle(graphics);
       break;
     case PG_PLAY:
       if (s_move_mode_toggle) {
@@ -2220,27 +2384,45 @@ void Pokemon_handle_select_click(GBC_Graphics *graphics) {
       }
       break;
     case PG_TREE:
-      switch (s_tree_state) {
-        case PT_CONFIRM:
-          switch (get_cursor_pos()) {
-            case 0: // Yes
-              s_select_pressed = false;
-              s_prev_game_state = PG_TREE;
-              s_tree_state = PT_REPLACE;
-              s_game_state = PG_DIALOGUE;
-              load_screen(graphics);
-              begin_dialogue_from_string(graphics, DIALOGUE_BOUNDS, DIALOGUE_ROOT, "You used CUT!", true);
-              break;
-            case 1: // No
-              s_select_pressed = false;
-              load_screen(graphics);
-              s_game_state = PG_PLAY;
-              break;
-          }
-          break;
-        default:
-          break;
-      }
+      handle_select_in_tree(graphics);
+      break;
+    default:
+      break;
+  }
+}
+
+void handle_down_in_menu(GBC_Graphics *graphics) {
+  switch (s_menu_state) {
+    case PM_BASE:
+      move_cursor_down(graphics);
+      draw_menu_info(graphics);
+      break;
+    case PM_OPTION:
+      move_cursor_down(graphics);
+      break;
+    default:
+      break;
+  }
+}
+
+void handle_down_in_intro(GBC_Graphics *graphics) {
+  move_cursor_down(graphics);
+}
+
+void handle_down_in_battle(GBC_Graphics *graphics) {
+  switch (s_battle_state) {
+    case PB_PLAYER_TURN:
+      move_cursor_down(graphics);
+      break;
+    default:
+      break;
+  }
+}
+
+void handle_down_in_tree(GBC_Graphics *graphics) {
+  switch (s_tree_state) {
+    case PT_CONFIRM:
+      move_cursor_down(graphics);
       break;
     default:
       break;
@@ -2250,85 +2432,80 @@ void Pokemon_handle_select_click(GBC_Graphics *graphics) {
 void Pokemon_handle_down(GBC_Graphics *graphics) {
   switch (s_game_state) {
     case PG_PLAY:
-      s_down_press_queued = true;
+      s_turn_right_queued = true;
       break;
     case PG_PAUSE:
-      switch (s_menu_state) {
-        case PM_BASE:
-          move_cursor_down(graphics);
-          draw_menu_info(graphics);
-          break;
-        case PM_OPTION:
-          move_cursor_down(graphics);
-          break;
-        default:
-          break;
-      }
+      handle_down_in_menu(graphics);
       break;
     case PG_INTRO:
-      move_cursor_down(graphics);
+      handle_down_in_intro(graphics);
       break;
     case PG_BATTLE:
-      switch (s_battle_state) {
-        case PB_PLAYER_TURN:
-          move_cursor_down(graphics);
-          break;
-        default:
-          break;
-      }
+      handle_down_in_battle(graphics);
       break;
     case PG_TREE:
-      switch (s_tree_state) {
-        case PT_CONFIRM:
-          move_cursor_down(graphics);
-          break;
-        default:
-          break;
-      }
+      handle_down_in_tree(graphics);
       break;
     default:
       break;
   }
 }
 
+void handle_up_in_menu(GBC_Graphics *graphics) {
+  switch (s_menu_state) {
+    case PM_BASE:
+      move_cursor_up(graphics);
+      draw_menu_info(graphics);
+      break;
+    case PM_OPTION:
+      move_cursor_up(graphics);
+      break;
+    default:
+      break;
+  }
+}
+
+void handle_up_in_intro(GBC_Graphics *graphics) {
+  move_cursor_up(graphics);
+}
+
+void handle_up_in_battle(GBC_Graphics *graphics) {
+  switch (s_battle_state) {
+    case PB_PLAYER_TURN:
+      move_cursor_up(graphics);
+      break;
+    default:
+      break;
+  }
+}
+
+void handle_up_in_tree(GBC_Graphics *graphics) {
+  switch (s_tree_state) {
+    case PT_CONFIRM:
+      move_cursor_up(graphics);
+      break;
+    default:
+      break;
+  }
+}
+
+    
 void Pokemon_handle_up(GBC_Graphics *graphics) {
   switch (s_game_state) {
     case PG_PLAY:
-      s_up_press_queued = true;
+      s_turn_left_queued = true;
       break;
     case PG_PAUSE:
-      switch (s_menu_state) {
-        case PM_BASE:
-          move_cursor_up(graphics);
-          draw_menu_info(graphics);
-          break;
-        case PM_OPTION:
-          move_cursor_up(graphics);
-          break;
-        default:
-          break;
-      }
+      handle_up_in_menu(graphics);
       break;
     case PG_INTRO:
-      move_cursor_up(graphics);
+      handle_up_in_intro(graphics);
       break;
     case PG_BATTLE:
-      switch (s_battle_state) {
-        case PB_PLAYER_TURN:
-          move_cursor_up(graphics);
-          break;
-        default:
-          break;
-      }
+      handle_up_in_battle(graphics);
       break;
     case PG_TREE:
-      switch (s_tree_state) {
-        case PT_CONFIRM:
-          move_cursor_up(graphics);
-          break;
-        default:
-          break;
-      }
+      handle_up_in_tree(graphics);
       break;
     default:
       break;
@@ -2336,9 +2513,54 @@ void Pokemon_handle_up(GBC_Graphics *graphics) {
 }
 
 void Pokemon_handle_focus_lost(GBC_Graphics *graphics) {
-  s_select_pressed = false;
+  clear_pressed();
 }
 
+void handle_back_in_game(GBC_Graphics *graphics) {
+  s_game_state = PG_PAUSE_QUEUED;
+  if (s_move_mode_toggle) {
+    s_move_toggle = false;
+  }
+  if (is_route_frame_animating()) {
+    quit_route_frame_animation(graphics);
+  }
+}
+
+void handle_back_in_menu(GBC_Graphics *graphics) {
+  switch(s_menu_state) {
+    case PM_BASE:
+      s_game_state = PG_PLAY;
+      change_b_button(false);
+      load_screen(graphics);
+      clear_pressed();
+      break;
+    case PM_PEBBLE:
+      s_menu_state = PM_BASE;
+      draw_pause_menu(graphics);
+      break;
+    case PM_STATS:
+      s_menu_state = PM_BASE;
+      draw_pause_menu(graphics);
+      break;
+    case PM_OPTION:
+      s_menu_state = PM_BASE;
+      set_cursor_pos(2);
+      hide_preview_sprites(graphics, 8);
+      draw_pause_menu(graphics);
+      break;
+    case PM_PACK:
+      s_menu_state = PM_BASE;
+      draw_pause_menu(graphics);
+      break;
+    default:
+      break;
+  }
+}
+
+void handle_back_in_intro(GBC_Graphics *graphics) {
+  window_stack_pop(true);
+}
+  
 void Pokemon_handle_back(GBC_Graphics *graphics) {
   if (get_dialogue_state() != D_IDLE) {
     handle_input_dialogue(graphics);
@@ -2346,50 +2568,155 @@ void Pokemon_handle_back(GBC_Graphics *graphics) {
   }
   switch (s_game_state) {
     case PG_PLAY:
-      s_game_state = PG_PAUSE_QUEUED;
-      if (s_move_mode_toggle) {
-        s_move_toggle = false;
-      }
-      if (is_route_frame_animating()) {
-        quit_route_frame_animation(graphics);
-      }
+      handle_back_in_game(graphics);
       break;
     case PG_PAUSE:
-      switch(s_menu_state) {
-        case PM_BASE:
-          s_game_state = PG_PLAY;
-          load_screen(graphics);
-          s_select_pressed = false;
-          break;
-        case PM_PEBBLE:
-          s_menu_state = PM_BASE;
-          draw_pause_menu(graphics);
-          break;
-        case PM_STATS:
-          s_menu_state = PM_BASE;
-          draw_pause_menu(graphics);
-          break;
-        case PM_OPTION:
-          s_menu_state = PM_BASE;
-          set_cursor_pos(2);
-          hide_preview_sprites(graphics, 8);
-          draw_pause_menu(graphics);
-          break;
-        case PM_PACK:
-          s_menu_state = PM_BASE;
-          draw_pause_menu(graphics);
-          break;
-        default:
-          break;
-      }
+      handle_back_in_menu(graphics);
       break;
     case PG_INTRO:
-      window_stack_pop(true);
+      handle_back_in_intro(graphics);
       break;
     default:
       break;
   }
 }
+
+#if defined(PBL_PLATFORM_EMERY)
+void Pokemon_handle_press_a(GBC_Graphics *graphics) {
+  switch(s_game_state) {
+    case PG_PLAY:
+      s_interact_queued = true;
+      break;
+    case PG_PAUSE:
+      handle_select_in_menu(graphics);
+      break;
+    case PG_INTRO:
+      handle_select_in_intro(graphics);
+      break;
+    case PG_DIALOGUE:
+      handle_select_in_dialogue(graphics);
+      break;
+    case PG_BATTLE:
+      handle_select_in_battle(graphics);
+      break;
+    case PG_TREE:
+      handle_select_in_tree(graphics);
+      break;
+    default:
+      break;
+  }
+}
+
+void Pokemon_handle_release_a(GBC_Graphics *graphics) {
+
+}
+
+void Pokemon_handle_press_b(GBC_Graphics *graphics) {
+  if (get_dialogue_state() != D_IDLE) {
+    handle_input_dialogue(graphics);
+    return;
+  }
+  switch (s_game_state) {
+    case PG_PLAY:
+      handle_back_in_game(graphics);
+      break;
+    case PG_PAUSE:
+      handle_back_in_menu(graphics);
+      break;
+    case PG_INTRO:
+      handle_back_in_intro(graphics);
+      break;
+    default:
+      break;
+  }
+}
+
+void Pokemon_handle_press_up(GBC_Graphics *graphics) {
+  switch (s_game_state) {
+    case PG_PLAY:
+      s_move_toggle = false;
+      s_touches_pressed[D_UP] = true;
+      break;
+    case PG_PAUSE:
+      handle_up_in_menu(graphics);
+      break;
+    case PG_INTRO:
+      handle_up_in_intro(graphics);
+      break;
+    case PG_BATTLE:
+      handle_up_in_battle(graphics);
+      break;
+    case PG_TREE:
+      handle_up_in_tree(graphics);
+      break;
+    default:
+      break;
+  }
+}
+
+void Pokemon_handle_press_left(GBC_Graphics *graphics) {
+  switch (s_game_state) {
+    case PG_PLAY:
+      s_move_toggle = false;
+      s_touches_pressed[D_LEFT] = true;
+      break;
+    default:
+      break;
+  }
+}
+
+void Pokemon_handle_press_down(GBC_Graphics *graphics) {
+  switch (s_game_state) {
+    case PG_PLAY:
+      s_move_toggle = false;
+      s_touches_pressed[D_DOWN] = true;
+      break;
+    case PG_PAUSE:
+      handle_down_in_menu(graphics);
+      break;
+    case PG_INTRO:
+      handle_down_in_intro(graphics);
+      break;
+    case PG_BATTLE:
+      handle_down_in_battle(graphics);
+      break;
+    case PG_TREE:
+      handle_down_in_tree(graphics);
+      break;
+    default:
+      break;
+  }
+}
+
+void Pokemon_handle_press_right(GBC_Graphics *graphics) {
+  switch (s_game_state) {
+    case PG_PLAY:
+      s_move_toggle = false;
+      s_touches_pressed[D_RIGHT] = true;
+      break;
+    default:
+      break;
+  }
+}
+
+void Pokemon_handle_release_up(GBC_Graphics *graphics) {
+  s_touches_pressed[D_UP] = false;
+}
+
+void Pokemon_handle_release_left(GBC_Graphics *graphics) {
+  s_touches_pressed[D_LEFT] = false;
+}
+
+void Pokemon_handle_release_down(GBC_Graphics *graphics) {
+  s_touches_pressed[D_DOWN] = false;
+}
+
+void Pokemon_handle_release_right(GBC_Graphics *graphics) {
+  s_touches_pressed[D_RIGHT] = false;
+}
+
+
+#endif
 
 void Pokemon_deinitialize(GBC_Graphics *graphics) {
   if (s_game_started) {
@@ -2401,4 +2728,22 @@ void Pokemon_deinitialize(GBC_Graphics *graphics) {
     s_world_map = NULL;
   }
   layer_set_update_proc(s_background_layer, NULL);
+    
+  if (s_dpad_bmap_layer != NULL)
+    bitmap_layer_destroy(s_dpad_bmap_layer);
+  if (s_b_bmap_layer != NULL)
+    bitmap_layer_destroy(s_b_bmap_layer);
+  if (s_a_bmap_layer != NULL)
+    bitmap_layer_destroy(s_a_bmap_layer);
+  if (s_start_bmap_layer != NULL)
+    bitmap_layer_destroy(s_start_bmap_layer);
+
+  if (s_dpad_bmap != NULL)
+    gbitmap_destroy(s_dpad_bmap);
+  if (s_b_bmap != NULL)
+    gbitmap_destroy(s_b_bmap);
+  if (s_a_bmap != NULL)
+    gbitmap_destroy(s_a_bmap);
+  if (s_start_bmap != NULL)
+    gbitmap_destroy(s_start_bmap);
 }

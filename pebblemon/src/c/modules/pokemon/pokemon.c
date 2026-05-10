@@ -426,8 +426,10 @@ static int check_for_object(uint16_t target_x, uint16_t target_y) {
 
 // uses start if false
 static void change_b_button(bool use_b_button) {
+#if defined(PBL_PLATFORM_EMERY)
   layer_set_hidden(bitmap_layer_get_layer(s_b_bmap_layer), !use_b_button);
   layer_set_hidden(bitmap_layer_get_layer(s_start_bmap_layer), use_b_button);
+#endif
 }
 
 static void load_resources(GBC_Graphics *graphics) {
@@ -542,12 +544,16 @@ void Pokemon_initialize(Window *window, GBC_Graphics *graphics, Layer *backgroun
   s_background_layer = background_layer;
 
   s_game_state = PG_INTRO;
+#if defined(PBL_PLATFORM_EMERY)
   GBC_Graphics_set_screen_bounds(graphics, GRect(
     SCREEN_BOUNDS_SQUARE.origin.x,
     3,
     SCREEN_BOUNDS_SQUARE.size.w,
     SCREEN_BOUNDS_SQUARE.size.h
   ));
+#else
+  GBC_Graphics_set_screen_bounds(graphics, SCREEN_BOUNDS_SQUARE);
+#endif
   GBC_Graphics_window_set_offset_pos(graphics, 0, 168);
   GBC_Graphics_lcdc_set_8x16_sprite_mode_enabled(graphics, false);
   for (uint8_t i = 0; i < 40; i++) {

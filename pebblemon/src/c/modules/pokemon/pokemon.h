@@ -108,5 +108,9 @@ void Pokemon_handle_press_up(GBC_Graphics *graphics);
 void Pokemon_handle_press_left(GBC_Graphics *graphics);
 void Pokemon_handle_press_down(GBC_Graphics *graphics);
 void Pokemon_handle_press_right(GBC_Graphics *graphics);
+void Pokemon_handle_release_up(GBC_Graphics *graphics);
+void Pokemon_handle_release_left(GBC_Graphics *graphics);
+void Pokemon_handle_release_down(GBC_Graphics *graphics);
+void Pokemon_handle_release_right(GBC_Graphics *graphics);
 #endif
     

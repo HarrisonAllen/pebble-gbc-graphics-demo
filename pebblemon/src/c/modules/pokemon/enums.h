@@ -6,7 +6,8 @@ typedef enum {
   D_UP,
   D_LEFT,
   D_DOWN,
-  D_RIGHT
+  D_RIGHT,
+  D_NONE
 } PlayerDirection;
 
 typedef enum {

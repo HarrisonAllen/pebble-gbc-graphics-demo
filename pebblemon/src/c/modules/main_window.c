@@ -135,6 +135,18 @@ static void handle_touchdown(int16_t x, int16_t y) {
 
 static void handle_liftoff(int16_t x, int16_t y) {
   switch (s_current_button) {
+    case TOUCH_UP:
+      Pokemon_handle_release_up(s_graphics);
+      break;
+    case TOUCH_LEFT:
+      Pokemon_handle_release_left(s_graphics);
+      break;
+    case TOUCH_DOWN:
+      Pokemon_handle_release_down(s_graphics);
+      break;
+    case TOUCH_RIGHT:
+      Pokemon_handle_release_right(s_graphics);
+      break;
     default:
       break;
   }

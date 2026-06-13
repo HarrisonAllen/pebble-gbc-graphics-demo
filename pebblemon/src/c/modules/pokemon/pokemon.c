@@ -34,8 +34,11 @@ static PokemonTreeState s_tree_state;
 static uint8_t s_player_pokemon_name[11], s_enemy_pokemon_name[11];
 static uint16_t s_player_pokemon, s_enemy_pokemon;
 static uint8_t s_enemy_pokemon_level;
-static uint16_t s_player_max_pokemon_health, s_enemy_max_pokemon_health;
-static uint16_t s_player_pokemon_health, s_enemy_pokemon_health;
+static int16_t s_player_max_pokemon_health, s_enemy_max_pokemon_health;
+static int16_t s_player_pokemon_health, s_enemy_pokemon_health;
+static int16_t s_lerped_player_pokemon_health, s_lerped_enemy_pokemon_health;
+static int16_t s_target_player_pokemon_health, s_target_enemy_pokemon_health;
+static uint8_t s_health_step;
 static uint8_t s_player_pokemon_damage, s_enemy_pokemon_damage;
 static uint16_t s_player_pokemon_attack, s_enemy_pokemon_attack;
 static uint16_t s_player_pokemon_defense, s_enemy_pokemon_defense;
@@ -85,6 +88,8 @@ static bool s_touches_pressed[4] = {
   false, // down
   false  // right
 };
+
+static void save();
 
 static PlayerDirection dpad_pressed() {
   for (uint8_t i = 0; i < 4; i++) {
@@ -538,6 +543,10 @@ static void lerp_palette(uint8_t *start, uint8_t *end, uint8_t index, uint8_t *o
 }
 #endif
 
+static uint16_t lerp_int16_t(int16_t start, int16_t end, float t) {
+  return start + (end - start) * t;
+}
+
 void Pokemon_initialize(Window *window, GBC_Graphics *graphics, Layer *background_layer) {
   layer_set_update_proc(background_layer, background_update_proc);
   
@@ -547,7 +556,7 @@ void Pokemon_initialize(Window *window, GBC_Graphics *graphics, Layer *backgroun
 #if defined(PBL_PLATFORM_EMERY)
   GBC_Graphics_set_screen_bounds(graphics, GRect(
     SCREEN_BOUNDS_SQUARE.origin.x,
-    3,
+    4,
     SCREEN_BOUNDS_SQUARE.size.w,
     SCREEN_BOUNDS_SQUARE.size.h
   ));
@@ -608,23 +617,23 @@ void Pokemon_initialize(Window *window, GBC_Graphics *graphics, Layer *backgroun
 #if defined(PBL_PLATFORM_EMERY)
   Layer *window_layer = window_get_root_layer(window);
 
-  s_dpad_bmap_layer = bitmap_layer_create(GRect(16, 149, 74, 74));
+  s_dpad_bmap_layer = bitmap_layer_create(GRect(16, 152, 74, 74));
   s_dpad_bmap = gbitmap_create_with_resource(RESOURCE_ID_IMAGE_DPAD);
   bitmap_layer_set_bitmap(s_dpad_bmap_layer, s_dpad_bmap);
   bitmap_layer_set_compositing_mode(s_dpad_bmap_layer, GCompOpSet);
   
-  s_a_bmap_layer = bitmap_layer_create(GRect(157, 185, 33, 33));
+  s_a_bmap_layer = bitmap_layer_create(GRect(157, 188, 33, 33));
   s_a_bmap = gbitmap_create_with_resource(RESOURCE_ID_IMAGE_A_BUTTON);
   bitmap_layer_set_bitmap(s_a_bmap_layer, s_a_bmap);
   bitmap_layer_set_compositing_mode(s_a_bmap_layer, GCompOpSet);
   
-  s_b_bmap_layer = bitmap_layer_create(GRect(115, 153, 33, 33));
+  s_b_bmap_layer = bitmap_layer_create(GRect(115, 156, 33, 33));
   s_b_bmap = gbitmap_create_with_resource(RESOURCE_ID_IMAGE_B_BUTTON);
   bitmap_layer_set_bitmap(s_b_bmap_layer, s_b_bmap);
   bitmap_layer_set_compositing_mode(s_b_bmap_layer, GCompOpSet);
   // layer_set_hidden(bitmap_layer_get_layer(s_b_bmap_layer), true);
   
-  s_start_bmap_layer = bitmap_layer_create(GRect(109, 154, 43, 30));
+  s_start_bmap_layer = bitmap_layer_create(GRect(109, 157, 43, 30));
   s_start_bmap = gbitmap_create_with_resource(RESOURCE_ID_IMAGE_START_BUTTON);
   bitmap_layer_set_bitmap(s_start_bmap_layer, s_start_bmap);
   bitmap_layer_set_compositing_mode(s_start_bmap_layer, GCompOpSet);
@@ -745,9 +754,15 @@ static void play(GBC_Graphics *graphics) {
     PlayerDirection dpad_dir = D_NONE;
 #if defined(PBL_PLATFORM_EMERY)
     dpad_dir = dpad_pressed();
-    if (dpad_dir != D_NONE && dpad_dir != s_player_direction) {
-      s_player_direction = dpad_dir;
-      set_player_sprites(graphics, false, s_player_direction == D_RIGHT);
+    if (dpad_dir != D_NONE) {
+      if (dpad_dir != s_player_direction) {
+        s_player_direction = dpad_dir;
+        set_player_sprites(graphics, false, s_player_direction == D_RIGHT);
+      } else {
+        if (s_move_mode_toggle) {
+          s_move_toggle = !s_move_toggle;
+        }
+      }
     }
 #endif
     if (s_select_pressed || (s_move_mode_toggle && s_move_toggle) || (dpad_dir != D_NONE) || s_interact_queued) {
@@ -799,6 +814,7 @@ static void play(GBC_Graphics *graphics) {
         s_can_move = false;
         if (s_select_pressed || s_interact_queued) {
           s_player_items = SET_ITEM(s_player_items, item_num);
+          save();
           hide_item(graphics);
           load_screen(graphics);
           begin_dialogue(graphics, DIALOGUE_BOUNDS, DIALOGUE_ROOT, item_num, true);
@@ -1631,7 +1647,8 @@ static void battle(GBC_Graphics *graphics) {
       begin_dialogue_from_string(graphics, DIALOGUE_BOUNDS, DIALOGUE_ROOT, go_dialogue, !s_auto_battle);
       s_prev_game_state = PG_BATTLE;
       s_game_state = PG_DIALOGUE;
-      s_battle_state = PB_PLAYER_TURN_PROMPT;
+      s_player_goes_first = rand() % 2;
+      s_battle_state = s_auto_battle ? (s_player_goes_first ? PB_PLAYER_MOVE : PB_ENEMY_MOVE) : PB_PLAYER_TURN_PROMPT;
     } break;
     case PB_PLAYER_TURN_PROMPT:
       set_cursor_pos(0);
@@ -1646,6 +1663,9 @@ static void battle(GBC_Graphics *graphics) {
       char move_dialogue[40];
       snprintf(move_dialogue, 40, "%s\nattacked!", s_player_pokemon_name);
       s_player_pokemon_damage = calculate_damage(s_player_level, s_player_pokemon_attack, s_enemy_pokemon_defense);
+      s_target_enemy_pokemon_health = s_enemy_pokemon_health - s_player_pokemon_damage;
+      s_lerped_enemy_pokemon_health = s_enemy_pokemon_health;
+      s_health_step = 0;
       s_clear_dialogue = false;
       begin_dialogue_from_string(graphics, DIALOGUE_BOUNDS, DIALOGUE_ROOT, move_dialogue, false);
       s_prev_game_state = PG_BATTLE;
@@ -1669,15 +1689,22 @@ static void battle(GBC_Graphics *graphics) {
         }
         s_battle_frame++;
       } else {
-        if (s_player_pokemon_damage > 0) {
-          s_enemy_pokemon_health -= 1;
-          s_player_pokemon_damage -= 1;
-          if (s_enemy_pokemon_health == 0) {
+        if (s_health_step <= HEALTH_STEPS && s_lerped_enemy_pokemon_health > s_target_enemy_pokemon_health) {
+          s_health_step += 1;
+          if (s_enemy_pokemon_damage >= HEALTH_STEPS) {
+            s_lerped_enemy_pokemon_health = lerp_int16_t(s_enemy_pokemon_health, s_target_enemy_pokemon_health, (s_health_step / (float)HEALTH_STEPS));
+          } else {
+            s_lerped_enemy_pokemon_health = s_enemy_pokemon_health - s_health_step;
+          }
+          if (s_lerped_enemy_pokemon_health <= 0) {
+            s_lerped_enemy_pokemon_health = 0;
+            s_enemy_pokemon_health = 0;
             s_battle_state = PB_PLAYER_WIN;
             s_battle_frame = 0;
           }
-          draw_enemy_hp_bar(graphics, s_enemy_max_pokemon_health, s_enemy_pokemon_health);
+          draw_enemy_hp_bar(graphics, s_enemy_max_pokemon_health, s_lerped_enemy_pokemon_health);
         } else {
+          s_enemy_pokemon_health = s_lerped_enemy_pokemon_health;
           s_battle_state = s_player_goes_first ? PB_ENEMY_MOVE : PB_LEFTOVERS;
           s_battle_frame = 0;
         }
@@ -1687,6 +1714,9 @@ static void battle(GBC_Graphics *graphics) {
       char move_dialogue[40];
       snprintf(move_dialogue, 40, "%s\nattacked!", s_enemy_pokemon_name);
       s_enemy_pokemon_damage = calculate_damage(s_enemy_pokemon_level, s_enemy_pokemon_attack, s_player_pokemon_defense);
+      s_target_player_pokemon_health = s_player_pokemon_health - s_enemy_pokemon_damage;
+      s_lerped_player_pokemon_health = s_player_pokemon_health;
+      s_health_step = 0;
       s_clear_dialogue = false;
       begin_dialogue_from_string(graphics, DIALOGUE_BOUNDS, DIALOGUE_ROOT, move_dialogue, false);
       s_prev_game_state = PG_BATTLE;
@@ -1710,28 +1740,38 @@ static void battle(GBC_Graphics *graphics) {
         }
         s_battle_frame++;
       } else {
-        if (s_enemy_pokemon_damage > 0) {
-          s_player_pokemon_health -= 1;
-          s_enemy_pokemon_damage -= 1;
-          if (s_player_pokemon_health == 1 && HAS_ITEM(s_player_items, ITEM_ID_FOCUS_BAND) && (rand() % 12 == 0)) {
+        if (s_health_step <= HEALTH_STEPS && s_lerped_player_pokemon_health > s_target_player_pokemon_health) {
+          s_health_step += 1;
+          if (s_player_pokemon_damage > HEALTH_STEPS) {
+            s_lerped_player_pokemon_health = lerp_int16_t(s_player_pokemon_health, s_target_player_pokemon_health, (s_health_step / (float)HEALTH_STEPS));
+          } else {
+            s_lerped_player_pokemon_health = s_player_pokemon_health - s_health_step;
+          }
+          if (s_lerped_player_pokemon_health <= 0 && HAS_ITEM(s_player_items, ITEM_ID_FOCUS_BAND) && (rand() % 12 == 0)) {
             char focus_dialogue[40];
             snprintf(focus_dialogue, 40, "%s\nhung on with\nFOCUS BAND!", s_player_pokemon_name);
-            begin_dialogue_from_string(graphics, DIALOGUE_BOUNDS, DIALOGUE_ROOT, focus_dialogue, s_auto_battle);
+            begin_dialogue_from_string(graphics, DIALOGUE_BOUNDS, DIALOGUE_ROOT, focus_dialogue, !s_auto_battle);
             s_prev_game_state = PG_BATTLE;
             s_game_state = PG_DIALOGUE;
             s_enemy_pokemon_damage = 0;
+            s_lerped_player_pokemon_health = 1;
+            s_player_pokemon_health = 1;
+            s_health_step = HEALTH_STEPS + 1;
           }
-          if (s_player_pokemon_health == 0) {
+          if (s_lerped_player_pokemon_health <= 0) {
+            s_lerped_player_pokemon_health = 0;
+            s_player_pokemon_health = 0;
             s_battle_state = PB_ENEMY_WIN;
             s_battle_frame = 0;
           }
-          draw_player_hp_bar(graphics, s_player_max_pokemon_health, s_player_pokemon_health);
+          draw_player_hp_bar(graphics, s_player_max_pokemon_health, s_lerped_player_pokemon_health);
         } else {
           if (HAS_ITEM(s_player_items, ITEM_ID_BERRY) && !s_eaten_berry && s_player_pokemon_health <= (s_player_max_pokemon_health / 2)) {
             s_eaten_berry = true;
             s_battle_state = PB_BERRY;
             s_battle_frame = 0;
           } else {
+            s_player_pokemon_health = s_lerped_player_pokemon_health;
             s_battle_state = s_player_goes_first ? PB_LEFTOVERS : PB_PLAYER_MOVE;
             s_battle_frame = 0;
           }
@@ -1922,6 +1962,7 @@ static void battle(GBC_Graphics *graphics) {
     case PB_FADEOUT:
       if (s_battle_frame < 5) {
         if (s_battle_frame == 0) {
+          save();
           GBC_Graphics_copy_all_bg_palettes(graphics, s_cur_bg_palettes);
         }
       #if defined(PBL_COLOR)
@@ -2231,6 +2272,7 @@ void handle_select_in_menu(GBC_Graphics *graphics) {
           draw_pause_menu(graphics);
           break;
       }
+      save();
       break;
     case PM_PEBBLE:
       s_menu_state = PM_BASE;
@@ -2634,7 +2676,6 @@ void Pokemon_handle_press_b(GBC_Graphics *graphics) {
 void Pokemon_handle_press_up(GBC_Graphics *graphics) {
   switch (s_game_state) {
     case PG_PLAY:
-      s_move_toggle = false;
       s_touches_pressed[D_UP] = true;
       break;
     case PG_PAUSE:
@@ -2657,7 +2698,6 @@ void Pokemon_handle_press_up(GBC_Graphics *graphics) {
 void Pokemon_handle_press_left(GBC_Graphics *graphics) {
   switch (s_game_state) {
     case PG_PLAY:
-      s_move_toggle = false;
       s_touches_pressed[D_LEFT] = true;
       break;
     default:
@@ -2668,7 +2708,6 @@ void Pokemon_handle_press_left(GBC_Graphics *graphics) {
 void Pokemon_handle_press_down(GBC_Graphics *graphics) {
   switch (s_game_state) {
     case PG_PLAY:
-      s_move_toggle = false;
       s_touches_pressed[D_DOWN] = true;
       break;
     case PG_PAUSE:
@@ -2691,7 +2730,6 @@ void Pokemon_handle_press_down(GBC_Graphics *graphics) {
 void Pokemon_handle_press_right(GBC_Graphics *graphics) {
   switch (s_game_state) {
     case PG_PLAY:
-      s_move_toggle = false;
       s_touches_pressed[D_RIGHT] = true;
       break;
     default:

@@ -47,6 +47,8 @@
 #define TILE_BANK_ANIMS 1
 #define TILE_OFFSET_ANIMS 200
 
+#define HEALTH_STEPS 24 // 1 second at 24 fps
+
 #define ENCOUNTERS_ENABLED true
 #define DEMO_MODE false
 #define RAND_SPRITES false

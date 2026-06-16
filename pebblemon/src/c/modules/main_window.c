@@ -91,9 +91,6 @@ TouchButtonType get_button_from_touch_location(int16_t x, int16_t y) {
     uint8_t i;
     TouchButtonType default_direction = TOUCH_NONE;
     for (i = 0; i < 4; i++) {
-      APP_LOG(APP_LOG_LEVEL_DEBUG, "%d <= %d < %d ? %d",
-        dpad_angles[i][0], angle, dpad_angles[i][1],
-        angle >= dpad_angles[i][0] && angle < dpad_angles[i][1]);
       if (dpad_angles[i][0] == -1) {
         default_direction = TOUCH_UP + i;
       } else if (angle >= dpad_angles[i][0] && angle < dpad_angles[i][1]) {

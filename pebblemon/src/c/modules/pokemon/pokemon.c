@@ -1766,12 +1766,13 @@ static void battle(GBC_Graphics *graphics) {
           }
           draw_player_hp_bar(graphics, s_player_max_pokemon_health, s_lerped_player_pokemon_health);
         } else {
+          s_player_pokemon_health = s_lerped_player_pokemon_health;
+          s_target_player_pokemon_health = s_player_pokemon_health;
           if (HAS_ITEM(s_player_items, ITEM_ID_BERRY) && !s_eaten_berry && s_player_pokemon_health <= (s_player_max_pokemon_health / 2)) {
             s_eaten_berry = true;
             s_battle_state = PB_BERRY;
             s_battle_frame = 0;
           } else {
-            s_player_pokemon_health = s_lerped_player_pokemon_health;
             s_battle_state = s_player_goes_first ? PB_LEFTOVERS : PB_PLAYER_MOVE;
             s_battle_frame = 0;
           }
@@ -1792,6 +1793,8 @@ static void battle(GBC_Graphics *graphics) {
         if (s_health_to_gain > 0 && s_player_pokemon_health < s_player_max_pokemon_health) {
           s_health_to_gain -= 1;
           s_player_pokemon_health += 1;
+          s_lerped_player_pokemon_health = s_player_pokemon_health;
+          s_target_player_pokemon_health = s_player_pokemon_health;
           draw_player_hp_bar(graphics, s_player_max_pokemon_health, s_player_pokemon_health);
         } else {
           s_battle_frame = 13;
@@ -1814,6 +1817,8 @@ static void battle(GBC_Graphics *graphics) {
           if (s_health_to_gain > 0 && s_player_pokemon_health < s_player_max_pokemon_health) {
             s_health_to_gain -= 1;
             s_player_pokemon_health += 1;
+            s_lerped_player_pokemon_health = s_player_pokemon_health;
+            s_target_player_pokemon_health = s_player_pokemon_health;
             draw_player_hp_bar(graphics, s_player_max_pokemon_health, s_player_pokemon_health);
           } else {
             s_player_goes_first = rand() % 2;
@@ -2355,6 +2360,8 @@ void handle_select_in_intro(GBC_Graphics *graphics) {
         break;
     }
   }
+  s_player_items = SET_ITEM(s_player_items, ITEM_ID_BERRY);
+  s_player_items = SET_ITEM(s_player_items, ITEM_ID_LEFTOVERS);
 }
 
 void handle_select_in_dialogue(GBC_Graphics *graphics) {

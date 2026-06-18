@@ -2360,8 +2360,6 @@ void handle_select_in_intro(GBC_Graphics *graphics) {
         break;
     }
   }
-  s_player_items = SET_ITEM(s_player_items, ITEM_ID_BERRY);
-  s_player_items = SET_ITEM(s_player_items, ITEM_ID_LEFTOVERS);
 }
 
 void handle_select_in_dialogue(GBC_Graphics *graphics) {
